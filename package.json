@@ -1,0 +1,63 @@
+{
+  "name": "companion-chatbot",
+  "version": "1.0.0",
+  "description": "A browser-based companion chatbot for intelligent task management",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:shared && npm run build:backend && npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:shared": "cd shared && npm run build",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && npm test",
+    "test:e2e": "cd tests && npm run test:e2e",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:fix": "npm run lint:frontend -- --fix && npm run lint:backend -- --fix",
+    "docker:dev": "docker-compose -f docker/docker-compose.dev.yml --env-file .env up -d",
+    "docker:prod": "docker-compose -f docker/docker-compose.prod.yml --env-file .env up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.dev.yml --env-file .env down",
+    "setup": "npm install && npm run build:shared",
+    "clean": "rm -rf node_modules frontend/node_modules backend/node_modules shared/node_modules",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "keywords": [
+    "chatbot",
+    "task-management",
+    "ai",
+    "react",
+    "nodejs",
+    "mongodb",
+    "docker"
+  ],
+  "author": "Kaivalya Dixit",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+} 
