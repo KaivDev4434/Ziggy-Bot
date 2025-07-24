@@ -85,6 +85,16 @@ router.get('/search',
 );
 
 /**
+ * @route GET /api/chat/conversations
+ * @desc Get all conversations for the authenticated user
+ * @access Private
+ */
+router.get('/conversations',
+  ValidationMiddleware.validate(ValidationSchemas.conversationQuery, 'query'),
+  ChatController.getConversationHistory
+);
+
+/**
  * @route POST /api/chat/conversations
  * @desc Create a new conversation
  * @access Private

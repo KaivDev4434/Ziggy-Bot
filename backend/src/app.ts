@@ -127,8 +127,10 @@ app.use('*', (req, res) => {
   });
 });
 
-// Database connection
-connectDB.connect();
+// Database connection (skip in test environment)
+if (process.env.NODE_ENV !== 'test') {
+  connectDB.connect();
+}
 
 // Graceful shutdown handling
 process.on('SIGTERM', () => {
