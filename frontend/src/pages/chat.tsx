@@ -51,116 +51,134 @@ export default function ChatPage() {
     currentConversation,
     messages,
     isLoading,
-    isSending,
     error,
+    sendMessage,
     fetchConversations,
+    getHistory,
     getConversation,
     createConversation,
-    sendMessage,
     setCurrentConversation,
-    clearError,
   } = useChatStore();
   const { fetchTasks } = useTaskStore();
-
+  
   const [messageInput, setMessageInput] = useState('');
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-
-  // Authentication check
-  useEffect(() => {
-    if (!isAuthenticated) {
-      checkAuth().then(() => {
-        if (!isAuthenticated) {
-          router.push('/auth/login');
-        }
-      });
-    }
-  }, [isAuthenticated, checkAuth, router]);
-
-  // Load conversations and handle conversation selection
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchConversations();
-      if (conversationId && typeof conversationId === 'string') {
-        getConversation(conversationId);
-      }
-    }
-  }, [isAuthenticated, conversationId, fetchConversations, getConversation]);
-
-  // Auto-load the most recent conversation if no specific conversation is selected
-  useEffect(() => {
-    if (isAuthenticated && !conversationId && conversations.length > 0 && !currentConversation) {
-      const mostRecentConversation = conversations
-        .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())[0];
-      
-      if (mostRecentConversation) {
-        setCurrentConversation(mostRecentConversation);
-        // Update URL to reflect the loaded conversation
-        router.replace(`/chat?conversation=${mostRecentConversation.id}`, undefined, { shallow: true });
-      }
-    }
-  }, [isAuthenticated, conversationId, conversations, currentConversation, setCurrentConversation, router]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Handle scroll to show/hide scroll-to-bottom button
-  useEffect(() => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setShowScrollToBottom(!isNearBottom);
-    };
-
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Handle scroll visibility
+  const handleScroll = (e: any) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  // Authentication check
+  useEffect(() => {
+    if (!isAuthenticated) {
+      checkAuth();
+    }
+  }, [isAuthenticated, checkAuth]);
+
+  // Fetch conversations on mount
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchConversations();
+    }
+  }, [isAuthenticated, user, fetchConversations]);
+
+  // Handle conversation selection from URL
+  useEffect(() => {
+    if (conversationId && 
+        conversationId !== 'undefined' && 
+        typeof conversationId === 'string' && 
+        conversationId.length > 0 &&
+        conversationId !== 'null') {
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (conversation) {
+        setCurrentConversation(conversation);
+        getConversation(conversationId);
+      } else {
+        // If conversation not found in list, redirect to chat without conversation
+        console.warn('Conversation not found in list:', conversationId);
+        router.replace('/chat', undefined, { shallow: true });
+      }
+    }
+  }, [conversationId, conversations, setCurrentConversation, getConversation, router]);
+
+  // Auto-select first conversation if none selected
+  useEffect(() => {
+    if (!currentConversation && conversations.length > 0) {
+      const firstConversation = conversations[0];
+      if (firstConversation && firstConversation.id) {
+        setCurrentConversation(firstConversation);
+        router.push(`/chat?conversation=${firstConversation.id}`, undefined, { shallow: true });
+      }
+    }
+  }, [currentConversation, conversations, setCurrentConversation, router]);
+
   const handleSendMessage = async () => {
     if (!messageInput.trim() || isSending) return;
 
-    const content = messageInput.trim();
+    const messageText = messageInput.trim();
     setMessageInput('');
+    setIsSending(true);
 
     try {
-      const result = await sendMessage(content, currentConversation?.id);
+      let conversationToUse = currentConversation;
       
-      // If tasks were created/updated, refresh the task list
-      if (result.actions?.some(action => action.type === 'create_task' || action.type === 'update_task')) {
-        fetchTasks();
+      // Create new conversation if none exists
+      if (!conversationToUse) {
+        conversationToUse = await createConversation(`Chat ${new Date().toLocaleString()}`);
+        if (conversationToUse && conversationToUse.id) {
+          router.push(`/chat?conversation=${conversationToUse.id}`, undefined, { shallow: true });
+        }
       }
+
+      await sendMessage(messageText, conversationToUse.id);
+      
+      // Refresh task data in case new tasks were created
+      fetchTasks();
     } catch (error) {
       console.error('Failed to send message:', error);
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSendMessage();
     }
   };
 
   const handleNewConversation = async () => {
     try {
-      const conversation = await createConversation('New Chat');
-      router.push(`/chat?conversation=${conversation.id}`);
+      const newConversation = await createConversation(`New Chat ${new Date().toLocaleString()}`);
+      setCurrentConversation(newConversation);
+      if (newConversation && newConversation.id) {
+        router.push(`/chat?conversation=${newConversation.id}`);
+      }
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
   };
 
   const handleConversationSelect = (conversation: any) => {
+    if (!conversation || !conversation.id) {
+      console.warn('Invalid conversation selected:', conversation);
+      return;
+    }
     setCurrentConversation(conversation);
     router.push(`/chat?conversation=${conversation.id}`);
   };
@@ -189,7 +207,7 @@ export default function ChatPage() {
 
     return (
       <ListItem
-        key={message.id}
+        key={message.id || `message-${index}-${message.role}-${Date.now()}`}
         sx={{
           display: 'flex',
           flexDirection: isUser ? 'row-reverse' : 'row',
@@ -218,7 +236,6 @@ export default function ChatPage() {
             borderRadius: 2,
             px: 2,
             py: 1,
-            position: 'relative',
           }}
         >
           <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
@@ -227,21 +244,8 @@ export default function ChatPage() {
 
           {/* Show NLP results for assistant messages */}
           {!isUser && message.nlpResult && (
-            <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                <Chip
-                  label={`Intent: ${message.nlpResult.intent}`}
-                  size="small"
-                  variant="outlined"
-                />
-                <Chip
-                  label={`${(message.nlpResult.confidence * 100).toFixed(0)}% confident`}
-                  size="small"
-                  color={message.nlpResult.confidence > 0.8 ? 'success' : 'warning'}
-                />
-              </Box>
-
-              {message.nlpResult.entities.length > 0 && (
+            <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+              {message.nlpResult.entities && message.nlpResult.entities.length > 0 && (
                 <Box sx={{ mb: 1 }}>
                   <Typography variant="caption" display="block" gutterBottom>
                     Entities detected:
@@ -249,7 +253,7 @@ export default function ChatPage() {
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                     {message.nlpResult.entities.map((entity, idx) => (
                       <Chip
-                        key={idx}
+                        key={`${message.id || 'msg'}-entity-${idx}-${entity.type}-${entity.value}`}
                         label={`${entity.type}: ${entity.value}`}
                         size="small"
                         variant="outlined"
@@ -260,14 +264,14 @@ export default function ChatPage() {
                 </Box>
               )}
 
-              {message.nlpResult.tasks.length > 0 && (
+              {message.nlpResult.tasks && message.nlpResult.tasks.length > 0 && (
                 <Box>
                   <Typography variant="caption" display="block" gutterBottom>
                     Tasks created/updated:
                   </Typography>
                   {message.nlpResult.tasks.map((task, idx) => (
                     <Box
-                      key={idx}
+                      key={`${message.id || 'msg'}-task-${idx}-${task.title || 'task'}`}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
@@ -285,8 +289,14 @@ export default function ChatPage() {
                         <Chip
                           label={`P${task.priority}`}
                           size="small"
-                          color={task.priority >= 8 ? 'error' : task.priority >= 5 ? 'warning' : 'success'}
+                          color="primary"
+                          sx={{ fontSize: '0.6rem', height: 16 }}
                         />
+                      )}
+                      {task.deadline && (
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          📅 {format(new Date(task.deadline), 'MMM d')}
+                        </Typography>
                       )}
                     </Box>
                   ))}
@@ -335,7 +345,7 @@ export default function ChatPage() {
                 startIcon={<Add />}
                 onClick={handleNewConversation}
               >
-                New
+                New Chat
               </Button>
             </Box>
           </CardContent>
@@ -347,22 +357,25 @@ export default function ChatPage() {
               </Box>
             ) : conversations.length > 0 ? (
               <List sx={{ py: 0 }}>
-                {conversations.map((conversation) => (
+                {conversations.map((conversation, index) => (
                   <ListItem
-                    key={conversation.id}
-                    button
+                    key={conversation.id || `conversation-${index}-${conversation.title || 'untitled'}`}
                     selected={currentConversation?.id === conversation.id}
                     onClick={() => handleConversationSelect(conversation)}
                     sx={{
                       borderRadius: 1,
                       mx: 1,
                       mb: 0.5,
+                      cursor: 'pointer',
                       '&.Mui-selected': {
                         backgroundColor: 'primary.main',
                         color: 'white',
                         '&:hover': {
                           backgroundColor: 'primary.dark',
                         },
+                      },
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
                       },
                     }}
                   >
@@ -380,7 +393,13 @@ export default function ChatPage() {
                         sx: { opacity: currentConversation?.id === conversation.id ? 0.8 : 0.6 }
                       }}
                     />
-                    <IconButton size="small">
+                    <IconButton 
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Handle menu click here
+                      }}
+                    >
                       <MoreVert />
                     </IconButton>
                   </ListItem>
@@ -392,10 +411,9 @@ export default function ChatPage() {
                   No conversations yet
                 </Typography>
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   startIcon={<Add />}
                   onClick={handleNewConversation}
-                  size="small"
                 >
                   Start First Chat
                 </Button>
@@ -404,40 +422,18 @@ export default function ChatPage() {
           </Box>
         </Card>
 
-        {/* Main Chat Area */}
+        {/* Chat Area */}
         <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           {/* Chat Header */}
-          <CardContent sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                  <Psychology />
-                </Avatar>
-                <Box>
-                  <Typography variant="h6">
-                    {currentConversation?.title || 'Chat with Ziggy'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    AI Task Assistant • Online
-                  </Typography>
-                </Box>
-              </Box>
-              <IconButton>
-                <MoreVert />
-              </IconButton>
-            </Box>
+          <CardContent sx={{ borderBottom: 1, borderColor: 'divider', py: 2 }}>
+            <Typography variant="h6">
+              {currentConversation ? currentConversation.title : 'Select a conversation'}
+            </Typography>
           </CardContent>
 
-          {/* Error Alert */}
-          {error && (
-            <Alert severity="error" onClose={clearError} sx={{ m: 1 }}>
-              {error}
-            </Alert>
-          )}
-
-          {/* Messages Area */}
+          {/* Messages */}
           <Box
-            ref={messagesContainerRef}
+            onScroll={handleScroll}
             sx={{
               flex: 1,
               overflow: 'auto',
@@ -446,7 +442,11 @@ export default function ChatPage() {
           >
             {messages.length > 0 ? (
               <List sx={{ py: 1 }}>
-                {messages.filter(message => message && message.role).map((message, index) => renderMessage(message, index))}
+                {messages
+                  .filter(message => message && message.role && (message.id || message.content))
+                  .map((message, index) => renderMessage(message, index))
+                  .filter(Boolean)
+                }
               </List>
             ) : (
               <Box
@@ -460,107 +460,68 @@ export default function ChatPage() {
                   p: 3,
                 }}
               >
-                <Avatar sx={{ bgcolor: 'secondary.main', mb: 2, width: 64, height: 64 }}>
-                  <Psychology sx={{ fontSize: 32 }} />
-                </Avatar>
-                <Typography variant="h6" gutterBottom>
-                  Hi {user.name}! I'm Ziggy 🤖
+                <Psychology sx={{ fontSize: 64, color: 'grey.400', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  Start chatting with Ziggy!
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 400 }}>
-                  I'm your AI task assistant. I can help you create tasks, manage your schedule, 
-                  set reminders, and keep you organized. Just tell me what you need to do!
+                <Typography variant="body2" color="text.secondary">
+                  Ask questions, create tasks, or just have a conversation.
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <Chip
-                    label="Create a task for tomorrow"
-                    variant="outlined"
-                    onClick={() => setMessageInput("Create a task for tomorrow")}
-                    clickable
-                  />
-                  <Chip
-                    label="Show my pending tasks"
-                    variant="outlined"
-                    onClick={() => setMessageInput("Show my pending tasks")}
-                    clickable
-                  />
-                  <Chip
-                    label="Schedule a meeting"
-                    variant="outlined"
-                    onClick={() => setMessageInput("Schedule a meeting")}
-                    clickable
-                  />
-                </Box>
               </Box>
             )}
             <div ref={messagesEndRef} />
-
-            {/* Scroll to Bottom FAB */}
-            {showScrollToBottom && (
-              <Fab
-                size="small"
-                color="primary"
-                onClick={scrollToBottom}
-                sx={{
-                  position: 'absolute',
-                  bottom: 16,
-                  right: 16,
-                }}
-              >
-                <KeyboardArrowDown />
-              </Fab>
-            )}
           </Box>
 
-          {/* Typing Indicator */}
-          {isSending && (
-            <Box sx={{ px: 2, py: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Avatar sx={{ bgcolor: 'secondary.main', width: 24, height: 24 }}>
-                  <Psychology sx={{ fontSize: 16 }} />
-                </Avatar>
-                <Typography variant="body2" color="text.secondary">
-                  Ziggy is thinking...
-                </Typography>
-                <CircularProgress size={16} />
-              </Box>
-            </Box>
+          {/* Scroll to Bottom Button */}
+          {showScrollButton && (
+            <Fab
+              size="small"
+              color="primary"
+              sx={{
+                position: 'absolute',
+                bottom: 80,
+                right: 24,
+              }}
+              onClick={scrollToBottom}
+            >
+              <KeyboardArrowDown />
+            </Fab>
           )}
 
           {/* Message Input */}
-          <CardContent sx={{ pt: 2 }}>
+          <CardContent sx={{ pt: 2, pb: 2 }}>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
               <TextField
                 fullWidth
                 multiline
                 maxRows={4}
-                placeholder="Type your message..."
                 value={messageInput}
                 onChange={(e) => setMessageInput(e.target.value)}
                 onKeyPress={handleKeyPress}
+                placeholder="Type your message..."
                 disabled={isSending}
-                variant="outlined"
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    borderRadius: 3,
+                    backgroundColor: 'background.paper',
                   },
                 }}
               />
               <Button
                 variant="contained"
+                endIcon={<Send />}
                 onClick={handleSendMessage}
                 disabled={!messageInput.trim() || isSending}
-                sx={{
-                  minWidth: 48,
-                  height: 48,
-                  borderRadius: 3,
-                }}
+                sx={{ py: 1.5, px: 3 }}
               >
-                {isSending ? <CircularProgress size={24} color="inherit" /> : <Send />}
+                {isSending ? <CircularProgress size={20} color="inherit" /> : 'Send'}
               </Button>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Press Enter to send, Shift+Enter for new line
-            </Typography>
           </CardContent>
         </Card>
       </Box>

@@ -60,8 +60,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       const response = await chatApi.getConversation(id);
       const { conversation, messages } = response.data.data!;
       
-      // Filter out any invalid messages
-      const validMessages = messages.filter((msg: Message) => msg && msg.role);
+      // Filter out any invalid messages with defensive programming
+      const validMessages = messages ? messages.filter((msg: Message) => msg && msg.role) : [];
       
       set({ 
         currentConversation: conversation,
@@ -135,12 +135,16 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       set({ isSending: true, error: null });
       
       const response = await chatApi.sendMessage({ content, conversationId });
-      const { message, response: botResponse, conversation, actions } = response.data.data!;
+      const { userMessage: message, assistantMessage: botResponse, conversation, actions } = response.data.data!;
+      
+      console.log('🔍 sendMessage response:', { message, botResponse, conversation });
+      console.log('🔍 Bot response content:', botResponse?.content);
       
       // Update current conversation if it changed
       const isNewConversation = conversation.id !== get().currentConversation?.id;
       
       if (isNewConversation) {
+        console.log('🔄 New conversation detected, loading full history...');
         set({ currentConversation: conversation });
         
         // Update conversations list
@@ -153,12 +157,14 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
         }
         set({ conversations: updatedConversations });
         
-        // For new conversations, load the full conversation to get all messages
+        // For new conversations, load the full conversation with messages
         // This ensures we have the complete message history
         try {
           const conversationResponse = await chatApi.getConversation(conversation.id);
           const { messages: allMessages } = conversationResponse.data.data!;
-          const validMessages = allMessages.filter((msg: Message) => msg && msg.role);
+          const validMessages = allMessages ? allMessages.filter((msg: Message) => msg && msg.role) : [];
+          
+          console.log('💬 Loaded full conversation messages:', validMessages.length);
           
           set({ 
             messages: validMessages,
@@ -173,6 +179,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
           if (message && message.role) newMessages.push(message);
           if (botResponse && botResponse.role) newMessages.push(botResponse);
           
+          console.log('➕ Adding partial messages:', newMessages.length);
+          
           set({ 
             messages: [...messages, ...newMessages],
             isSending: false,
@@ -180,11 +188,15 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
           });
         }
       } else {
+        console.log('💬 Same conversation, adding new messages...');
         // Same conversation, just add the new messages
         const { messages } = get();
         const newMessages = [];
         if (message && message.role) newMessages.push(message);
         if (botResponse && botResponse.role) newMessages.push(botResponse);
+        
+        console.log('➕ Adding messages to existing conversation:', newMessages.length);
+        console.log('📝 Current messages count:', messages.length, '→', messages.length + newMessages.length);
         
         set({ 
           messages: [...messages, ...newMessages],
@@ -195,6 +207,7 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       
       return { message, response: botResponse, actions };
     } catch (error: any) {
+      console.error('❌ sendMessage error:', error);
       set({ 
         isSending: false, 
         error: error.response?.data?.message || 'Failed to send message'

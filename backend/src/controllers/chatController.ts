@@ -218,10 +218,16 @@ export class ChatController {
       // Populate context tasks
       await conversation.populate('context.currentTasks', 'title status priority deadline');
 
+      // Extract messages from the conversation
+      const messages = conversation.messages || [];
+
       res.status(200).json({
         success: true,
         message: 'Conversation retrieved successfully',
-        data: { conversation }
+        data: { 
+          conversation,
+          messages 
+        }
       } as ChatResponse);
 
     } catch (error) {
