@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Todo {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("pending") // pending, done
+  priority    Int       @default(2)
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+model Habit {
+  id        String        @id @default(cuid())
+  name      String
+  frequency String        @default("daily")
+  active    Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  records   HabitRecord[]
+}
+
+model HabitRecord {
+  id        String   @id @default(cuid())
+  habitId   String
+  date      DateTime
+  completed Boolean  @default(true)
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+}
+
+model Landmark {
+  id        String   @id @default(cuid())
+  title     String
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+}
