@@ -10,24 +10,25 @@ interface Todo {
   status: string;
 }
 
-interface Habit {
-  name: string;
-  streak: number;
-  completedToday: boolean;
-}
-
 interface WeatherData {
   temperature: number;
   description: string;
   icon: string;
+  location?: string;
 }
 
 export interface BriefingData {
   weather?: WeatherData;
   todaysTodos: Todo[];
   upcomingDeadlines: { todo: Todo; daysLeft: number }[];
-  habits: Habit[];
+  habits: { name: string; streak: number; completedToday: boolean }[];
   greeting: string;
+}
+
+export interface BriefingOptions {
+  lat?: number;
+  lon?: number;
+  forceRegenerate?: boolean;
 }
 
 // Get greeting based on time of day
@@ -43,11 +44,26 @@ function getDayName(): string {
   return new Date().toLocaleDateString("en-US", { weekday: "long" });
 }
 
-// Fetch weather data (using a free API)
-async function fetchWeather(): Promise<WeatherData | undefined> {
+// Get formatted date
+function getFormattedDate(): string {
+  return new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// Fetch weather data with optional coordinates
+async function fetchWeather(lat?: number, lon?: number): Promise<WeatherData | undefined> {
   try {
-    // Using wttr.in for simple weather data (no API key needed)
-    const response = await fetch("https://wttr.in/?format=j1", {
+    // Build URL with coordinates if available
+    let url = "https://wttr.in/";
+    if (lat !== undefined && lon !== undefined) {
+      url += `${lat},${lon}`;
+    }
+    url += "?format=j1";
+
+    const response = await fetch(url, {
       headers: { "User-Agent": "Ziggy/1.0" },
     });
 
@@ -55,13 +71,23 @@ async function fetchWeather(): Promise<WeatherData | undefined> {
 
     const data = await response.json();
     const current = data.current_condition?.[0];
+    const area = data.nearest_area?.[0];
 
     if (!current) return undefined;
+
+    // Get location name
+    let location = "";
+    if (area) {
+      const city = area.areaName?.[0]?.value || "";
+      const country = area.country?.[0]?.value || "";
+      location = city ? `${city}${country ? `, ${country}` : ""}` : "";
+    }
 
     return {
       temperature: parseInt(current.temp_C || current.temp_F),
       description: current.weatherDesc?.[0]?.value || "Unknown",
       icon: getWeatherEmoji(current.weatherCode),
+      location,
     };
   } catch (error) {
     console.error("Failed to fetch weather:", error);
@@ -83,33 +109,47 @@ function getWeatherEmoji(code: string): string {
   return "🌤️";
 }
 
+// Helper to compare dates ignoring time (using local dates)
+function isSameLocalDay(date1: Date, date2: Date): boolean {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+}
+
+// Calculate days between two dates (local)
+function daysBetween(from: Date, to: Date): number {
+  const fromLocal = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const toLocal = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.ceil((toLocal.getTime() - fromLocal.getTime()) / (24 * 60 * 60 * 1000));
+}
+
 export async function generateBriefing(
   todos: Todo[],
-  habits: { name: string; records: { date: Date; completed: boolean }[] }[]
+  habits: { name: string; records: { date: Date; completed: boolean }[] }[],
+  options: BriefingOptions = {}
 ): Promise<string> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const oneWeekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // Fetch weather
-  const weather = await fetchWeather();
+  // Fetch weather with location if available
+  const weather = await fetchWeather(options.lat, options.lon);
 
   // Get today's todos (by doDate or dueDate)
   const todaysTodos = todos.filter((t) => {
     if (t.status === "done") return false;
-    
-    if (t.doDate) {
-      const doDate = new Date(t.doDate);
-      doDate.setHours(0, 0, 0, 0);
-      if (doDate.getTime() === today.getTime()) return true;
+
+    if (t.doDate && isSameLocalDay(new Date(t.doDate), today)) {
+      return true;
     }
-    
-    if (t.dueDate) {
-      const dueDate = new Date(t.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      if (dueDate.getTime() === today.getTime()) return true;
+
+    if (t.dueDate && isSameLocalDay(new Date(t.dueDate), today)) {
+      return true;
     }
-    
+
     return false;
   });
 
@@ -117,25 +157,18 @@ export async function generateBriefing(
   const upcomingDeadlines = todos
     .filter((t) => {
       if (t.status === "done" || !t.dueDate) return false;
-      const dueDate = new Date(t.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate > today && dueDate <= oneWeekFromNow;
+      const daysLeft = daysBetween(today, new Date(t.dueDate));
+      return daysLeft > 0 && daysLeft <= 7;
     })
     .map((t) => ({
       todo: t,
-      daysLeft: Math.ceil(
-        (new Date(t.dueDate!).getTime() - today.getTime()) / (24 * 60 * 60 * 1000)
-      ),
+      daysLeft: daysBetween(today, new Date(t.dueDate!)),
     }))
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
   // Calculate habit streaks
   const habitStats = habits.map((h) => {
-    const todayRecord = h.records.find((r) => {
-      const recordDate = new Date(r.date);
-      recordDate.setHours(0, 0, 0, 0);
-      return recordDate.getTime() === today.getTime();
-    });
+    const todayRecord = h.records.find((r) => isSameLocalDay(new Date(r.date), today));
 
     // Calculate streak
     let streak = 0;
@@ -148,7 +181,7 @@ export async function generateBriefing(
       })
       .sort((a, b) => b - a);
 
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     if (!todayRecord?.completed) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
@@ -173,20 +206,22 @@ export async function generateBriefing(
   // Build briefing message
   const parts: string[] = [];
 
-  // Greeting
+  // Greeting with date
   parts.push(`${getGreeting()}! Happy ${getDayName()}! 👋`);
+  parts.push(`*${getFormattedDate()}*`);
 
   // Weather
   if (weather) {
+    const locationText = weather.location ? ` in ${weather.location}` : "";
     parts.push(
-      `\n${weather.icon} It's currently ${weather.temperature}°C and ${weather.description.toLowerCase()}.`
+      `\n${weather.icon} It's currently ${weather.temperature}°C and ${weather.description.toLowerCase()}${locationText}.`
     );
   }
 
   // Today's focus
   if (todaysTodos.length > 0) {
     parts.push("\n\n**Today's Focus:**");
-    
+
     // Group by category
     const byCategory: Record<string, Todo[]> = {};
     todaysTodos.forEach((t) => {
@@ -237,4 +272,3 @@ export async function generateBriefing(
 
   return parts.join("\n");
 }
-

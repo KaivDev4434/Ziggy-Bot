@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 interface InputAreaProps {
   onSend: (message: string) => void;
   isLoading: boolean;
+  disabled?: boolean; // For read-only mode (past dates)
 }
 
-export function InputArea({ onSend, isLoading }: InputAreaProps) {
+export function InputArea({ onSend, isLoading, disabled = false }: InputAreaProps) {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -25,7 +26,7 @@ export function InputArea({ onSend, isLoading }: InputAreaProps) {
   }, [message]);
 
   const handleSubmit = () => {
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isLoading && !disabled) {
       onSend(message.trim());
       setMessage("");
       if (textareaRef.current) {
@@ -50,15 +51,15 @@ export function InputArea({ onSend, isLoading }: InputAreaProps) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Tell Ziggy what's on your mind..."
+            placeholder={disabled ? "This conversation is read-only" : "Tell Ziggy what's on your mind..."}
             className="min-h-[44px] max-h-[150px] resize-none pr-4 py-3 rounded-xl bg-background"
-            disabled={isLoading}
+            disabled={isLoading || disabled}
             rows={1}
           />
         </div>
         <Button
           onClick={handleSubmit}
-          disabled={!message.trim() || isLoading}
+          disabled={!message.trim() || isLoading || disabled}
           size="icon"
           className="h-11 w-11 rounded-xl shrink-0"
         >

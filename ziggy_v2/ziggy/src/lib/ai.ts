@@ -17,6 +17,13 @@ interface PerplexityResponse {
 // Context for AI to understand current state
 export interface AIContext {
   currentDateTime: string;
+  timezone: string;
+  location?: {
+    city?: string;
+    country?: string;
+    lat?: number;
+    lon?: number;
+  };
   pendingTodos: {
     id: string;
     title: string;
@@ -71,10 +78,18 @@ function buildSystemPrompt(context?: AIContext): string {
   let contextSection = "";
   
   if (context) {
+    const locationInfo = context.location 
+      ? `- User's location: ${context.location.city ? `${context.location.city}, ` : ""}${context.location.country || "Unknown"}${context.location.lat ? ` (${context.location.lat.toFixed(2)}°, ${context.location.lon?.toFixed(2)}°)` : ""}`
+      : "- User's location: Not available";
+
     contextSection = `
 
-CURRENT CONTEXT:
+CURRENT CONTEXT (USE THIS TO ANSWER USER QUESTIONS):
 - Current date and time: ${context.currentDateTime}
+- Timezone: ${context.timezone}
+${locationInfo}
+
+IMPORTANT: When the user asks about time, date, or location, USE THE ABOVE INFORMATION. Do not say you cannot access their location or time - you have it!
 
 PENDING TASKS (${context.pendingTodos.length} total):
 ${context.pendingTodos.length > 0 
@@ -289,6 +304,30 @@ export async function processMessage(
   }
 }
 
+// Helper to format date to local YYYY-MM-DD without timezone shift
+function toLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper to check if two dates are the same day (local)
+function isSameLocalDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
+// Calculate days between two dates using local time
+function daysBetweenLocal(from: Date, to: Date): number {
+  const fromLocal = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const toLocal = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((toLocal.getTime() - fromLocal.getTime()) / (24 * 60 * 60 * 1000));
+}
+
 // Helper to build AI context from database data
 export function buildAIContext(
   todos: {
@@ -303,13 +342,18 @@ export function buildAIContext(
   habits: {
     name: string;
     records: { date: Date; completed: boolean }[];
-  }[]
+  }[],
+  location?: {
+    city?: string;
+    country?: string;
+    lat?: number;
+    lon?: number;
+  }
 ): AIContext {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const oneWeekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  // Pending todos
+  // Pending todos - use local date formatting
   const pendingTodos = todos
     .filter((t) => t.status === "pending")
     .map((t) => ({
@@ -317,17 +361,15 @@ export function buildAIContext(
       title: t.title,
       category: t.category,
       priority: t.priority,
-      dueDate: t.dueDate ? t.dueDate.toISOString().split("T")[0] : null,
-      doDate: t.doDate ? t.doDate.toISOString().split("T")[0] : null,
+      dueDate: t.dueDate ? toLocalDateString(new Date(t.dueDate)) : null,
+      doDate: t.doDate ? toLocalDateString(new Date(t.doDate)) : null,
     }));
 
   // Today's habits with streak calculation
   const todayHabits = habits.map((h) => {
-    const todayRecord = h.records.find((r) => {
-      const recordDate = new Date(r.date);
-      recordDate.setHours(0, 0, 0, 0);
-      return recordDate.getTime() === today.getTime();
-    });
+    const todayRecord = h.records.find((r) => 
+      isSameLocalDay(new Date(r.date), today)
+    );
 
     // Calculate streak
     let streak = 0;
@@ -340,7 +382,7 @@ export function buildAIContext(
       })
       .sort((a, b) => b - a);
 
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     if (!todayRecord?.completed) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
@@ -362,23 +404,22 @@ export function buildAIContext(
     };
   });
 
-  // Upcoming deadlines
+  // Upcoming deadlines - use local date comparison
   const upcomingDeadlines = todos
-    .filter(
-      (t) =>
-        t.status === "pending" &&
-        t.dueDate &&
-        t.dueDate >= today &&
-        t.dueDate <= oneWeekFromNow
-    )
+    .filter((t) => {
+      if (t.status !== "pending" || !t.dueDate) return false;
+      const daysLeft = daysBetweenLocal(today, new Date(t.dueDate));
+      return daysLeft >= 0 && daysLeft <= 7;
+    })
     .map((t) => ({
       title: t.title,
-      dueDate: t.dueDate!.toISOString().split("T")[0],
-      daysLeft: Math.ceil(
-        (t.dueDate!.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)
-      ),
+      dueDate: toLocalDateString(new Date(t.dueDate!)),
+      daysLeft: daysBetweenLocal(today, new Date(t.dueDate!)),
     }))
     .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  // Get timezone
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return {
     currentDateTime: now.toLocaleString("en-US", {
@@ -390,6 +431,8 @@ export function buildAIContext(
       minute: "2-digit",
       hour12: true,
     }),
+    timezone,
+    location,
     pendingTodos,
     todayHabits,
     upcomingDeadlines,

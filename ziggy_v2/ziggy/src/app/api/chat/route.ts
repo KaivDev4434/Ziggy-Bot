@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { processMessage, buildAIContext, ExtractedTodo } from "@/lib/ai";
+import { cleanCitations, isPastDate, parseLocalDate } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, date } = await request.json();
+    const { message, date, location } = await request.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json(
@@ -14,8 +15,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the date for message grouping (defaults to today)
-    const messageDate = date ? new Date(date) : new Date();
-    messageDate.setHours(0, 0, 0, 0);
+    // Use parseLocalDate to avoid timezone issues
+    const messageDate = date 
+      ? parseLocalDate(date.split("T")[0]) 
+      : (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
+
+    // Prevent sending messages to past days
+    if (isPastDate(messageDate)) {
+      return NextResponse.json(
+        { error: "Cannot send messages to past days. Past conversations are read-only." },
+        { status: 400 }
+      );
+    }
 
     // Save user message
     const userMessage = await prisma.message.create({
@@ -66,7 +77,7 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    // Build AI context
+    // Build AI context with location if provided
     const aiContext = buildAIContext(
       allTodos,
       allHabits.map((h) => ({
@@ -75,7 +86,8 @@ export async function POST(request: NextRequest) {
           date: r.date,
           completed: r.completed,
         })),
-      }))
+      })),
+      location // Pass location to AI context
     );
 
     // Process with AI
@@ -149,11 +161,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Save assistant message
+    // Clean citations from AI response and save assistant message
+    const cleanedResponse = cleanCitations(aiResult.conversationalResponse);
     const assistantMessage = await prisma.message.create({
       data: {
         role: "assistant",
-        content: aiResult.conversationalResponse,
+        content: cleanedResponse,
         date: messageDate,
       },
     });
@@ -204,18 +217,46 @@ async function processTodoAction(
   }
 
   switch (action) {
-    case "create":
-      await prisma.todo.create({
-        data: {
-          title: todo.title,
-          description: todo.description || null,
-          priority: todo.priority || null,
-          dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
-          doDate: todo.doDate ? new Date(todo.doDate) : null,
-          category: todo.category || null,
-        },
+    case "create": {
+      // Check for duplicate before creating
+      const normalizedTitle = todo.title.toLowerCase().trim();
+      const existingMatch = existingTodos.find((t) => {
+        const existingTitle = t.title.toLowerCase().trim();
+        // Exact match or very similar
+        return existingTitle === normalizedTitle;
       });
+
+      if (existingMatch) {
+        // Task already exists - update it instead of creating duplicate
+        const updateData: Record<string, unknown> = {};
+        if (todo.description) updateData.description = todo.description;
+        if (todo.priority) updateData.priority = todo.priority;
+        if (todo.dueDate) updateData.dueDate = new Date(todo.dueDate);
+        if (todo.doDate) updateData.doDate = new Date(todo.doDate);
+        if (todo.category) updateData.category = todo.category;
+
+        if (Object.keys(updateData).length > 0) {
+          await prisma.todo.update({
+            where: { id: existingMatch.id },
+            data: updateData,
+          });
+        }
+        // Don't create a new one
+      } else {
+        // No duplicate found, create new task
+        await prisma.todo.create({
+          data: {
+            title: todo.title,
+            description: todo.description || null,
+            priority: todo.priority || null,
+            dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
+            doDate: todo.doDate ? new Date(todo.doDate) : null,
+            category: todo.category || null,
+          },
+        });
+      }
       break;
+    }
 
     case "update":
       if (matchedTodoId) {

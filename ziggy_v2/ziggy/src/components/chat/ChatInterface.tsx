@@ -16,12 +16,14 @@ interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   isLoading: boolean;
+  disabled?: boolean; // For read-only mode (past dates)
 }
 
 export function ChatInterface({
   messages,
   onSendMessage,
   isLoading,
+  disabled = false,
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +67,7 @@ export function ChatInterface({
       </ScrollArea>
 
       {/* Input Area */}
-      <InputArea onSend={onSendMessage} isLoading={isLoading} />
+      <InputArea onSend={onSendMessage} isLoading={isLoading} disabled={disabled} />
     </div>
   );
 }
