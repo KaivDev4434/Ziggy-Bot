@@ -4,11 +4,13 @@ A friendly AI-powered personal assistant built with Next.js 14, helping you orga
 
 ## Features
 
-- **💬 Conversational Chat** - Talk naturally with Ziggy about your tasks, goals, and life events
-- **📋 Task Management** - Track todos with priorities and due dates
-- **🔄 Habit Tracking** - Build daily habits with streak tracking and weekly views
-- **📊 Dashboard** - See your progress at a glance with stats and visualizations
-- **📱 PWA Ready** - Install on mobile devices for a native app experience
+- **Conversational Chat** - Talk naturally with Ziggy about your tasks, goals, and life events
+- **Smart Task Management** - Track todos with priorities, due dates, start dates, and auto-categorization
+- **Habit Tracking** - Build daily habits with streak tracking, weekly views, and GitHub-style contribution graphs
+- **Calendar-Based Chats** - Each day has its own chat session with a mini calendar for navigation
+- **Daily Briefings** - Start each day with weather, tasks, deadlines, and habit reminders
+- **Dashboard** - See your progress at a glance with stats and visualizations
+- **PWA Ready** - Install on mobile devices for a native app experience
 
 ## Tech Stack
 
@@ -61,24 +63,26 @@ A friendly AI-powered personal assistant built with Next.js 14, helping you orga
 ziggy/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
-│   │   ├── page.tsx           # Chat (home)
-│   │   ├── todos/page.tsx     # Task management
-│   │   ├── habits/page.tsx    # Habit tracking
+│   │   ├── page.tsx           # Chat (home) with calendar
+│   │   ├── todos/page.tsx     # Task management with categories
+│   │   ├── habits/page.tsx    # Habit tracking with graphs
 │   │   ├── dashboard/page.tsx # Overview dashboard
 │   │   └── api/               # API routes
 │   │       ├── chat/          # AI chat endpoint
+│   │       ├── briefing/      # Daily briefing generator
 │   │       ├── todos/         # CRUD for todos
 │   │       ├── habits/        # CRUD for habits
 │   │       └── dashboard/     # Dashboard data
 │   ├── components/
 │   │   ├── chat/              # Chat UI components
 │   │   ├── todos/             # Todo components
-│   │   ├── habits/            # Habit components
+│   │   ├── habits/            # Habit components with graphs
 │   │   ├── ui/                # shadcn/ui components
 │   │   └── BottomNav.tsx      # Navigation
 │   └── lib/
 │       ├── db.ts              # Prisma client
-│       ├── ai.ts              # Perplexity API client
+│       ├── ai.ts              # Perplexity API client with context
+│       ├── briefing.ts        # Daily briefing generator
 │       └── utils.ts           # Utilities
 ├── prisma/
 │   └── schema.prisma          # Database schema
@@ -90,13 +94,16 @@ ziggy/
 ## API Endpoints
 
 ### Chat
-- `POST /api/chat` - Send a message to Ziggy
+- `POST /api/chat` - Send a message to Ziggy (with date for session grouping)
+
+### Briefing
+- `POST /api/briefing` - Generate daily briefing for a date
 
 ### Messages
-- `GET /api/messages` - Get chat history
+- `GET /api/messages` - Get chat history (with optional date filter)
 
 ### Todos
-- `GET /api/todos` - List todos (with optional status filter)
+- `GET /api/todos` - List todos (with optional status/category filter)
 - `POST /api/todos` - Create a todo
 - `PATCH /api/todos/[id]` - Update a todo
 - `DELETE /api/todos/[id]` - Delete a todo
@@ -110,6 +117,55 @@ ziggy/
 
 ### Dashboard
 - `GET /api/dashboard` - Get aggregated stats
+
+---
+
+## Version Roadmap
+
+### v1.0 (Current) - Core Experience
+- [x] Bug fixes (task updates, AI context sync)
+- [x] Smart auto-tagging (priority, dueDate, doDate, category)
+- [x] Dynamic category filtering for todos
+- [x] Calendar-based daily chats
+- [x] Daily briefing (weather, todos, deadlines)
+- [x] Habit contribution graphs
+
+### v1.1 - Polish and UX
+- [ ] Dark mode support
+- [ ] Smooth animations (Framer Motion)
+- [ ] Improved mobile PWA experience
+
+### v1.2 - Content Integration
+- [ ] Daily briefing: RSS feed links (last 24h)
+- [ ] Daily briefing: YouTube subscription highlights
+
+### v1.3 - Personal Tracking
+- [ ] Basic budget tracking (income, expenses, categories)
+- [ ] Mood tracking via sentiment analysis
+- [ ] Journaling with photo sharing
+
+### v1.4 - Meal Planning
+- [ ] Meal planning and recipe suggestions
+- [ ] Based on personal preferences and journal context/memory
+- [ ] Grocery list generation from meal plans
+
+### v1.5 - User Accounts
+- [ ] User authentication (NextAuth)
+- [ ] Multi-device sync
+- [ ] Data export/import
+
+### v1.6 - Advanced Features
+- [ ] Multiple AI agents/personas
+- [ ] Entertainment tracking (books, movies, podcasts)
+- [ ] World map / cities visited
+
+### v2.0 - Integrations and PKM
+- [ ] Voice mode (Web Speech API)
+- [ ] Todoist, Google Calendar integration
+- [ ] Banking app connections (via Plaid)
+- [ ] Personal Knowledge Management (insights, tagging, search)
+
+---
 
 ## License
 

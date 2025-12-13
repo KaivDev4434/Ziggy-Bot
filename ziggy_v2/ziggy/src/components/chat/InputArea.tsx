@@ -101,3 +101,5 @@ export function InputArea({ onSend, isLoading }: InputAreaProps) {
     </div>
   );
 }
+
+

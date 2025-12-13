@@ -8,3 +8,5 @@
   <circle cx="256" cy="256" r="256" fill="url(#grad)"/>
   <text x="256" y="320" font-family="Arial, sans-serif" font-size="220" font-weight="bold" fill="white" text-anchor="middle">Z</text>
 </svg>
+
+

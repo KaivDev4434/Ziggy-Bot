@@ -10,8 +10,10 @@ interface Todo {
   title: string;
   description: string | null;
   status: string;
-  priority: number;
+  priority: number | null;
   dueDate: Date | null;
+  doDate: Date | null;
+  category: string | null;
   createdAt: Date;
   completedAt: Date | null;
 }
@@ -25,36 +27,68 @@ interface TodoItemProps {
 export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
   const isDone = todo.status === "done";
 
-  const priorityColors = {
+  const priorityColors: Record<number, string> = {
     1: "bg-red-100 text-red-700 border-red-200",
     2: "bg-yellow-100 text-yellow-700 border-yellow-200",
     3: "bg-green-100 text-green-700 border-green-200",
   };
 
-  const priorityLabels = {
+  const priorityLabels: Record<number, string> = {
     1: "High",
     2: "Medium",
     3: "Low",
   };
 
-  const formatDueDate = (date: Date) => {
+  const categoryColors: Record<string, string> = {
+    work: "bg-blue-100 text-blue-700 border-blue-200",
+    personal: "bg-purple-100 text-purple-700 border-purple-200",
+    chores: "bg-orange-100 text-orange-700 border-orange-200",
+    groceries: "bg-green-100 text-green-700 border-green-200",
+    finance: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    health: "bg-pink-100 text-pink-700 border-pink-200",
+    projects: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    errands: "bg-amber-100 text-amber-700 border-amber-200",
+    shopping: "bg-teal-100 text-teal-700 border-teal-200",
+  };
+
+  const formatDate = (date: Date, prefix?: string) => {
     const d = new Date(date);
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    if (d.toDateString() === today.toDateString()) return "Today";
-    if (d.toDateString() === tomorrow.toDateString()) return "Tomorrow";
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    today.setHours(0, 0, 0, 0);
+    tomorrow.setHours(0, 0, 0, 0);
+    const dateOnly = new Date(d);
+    dateOnly.setHours(0, 0, 0, 0);
+
+    let label = "";
+    if (dateOnly.getTime() === today.getTime()) {
+      label = "Today";
+    } else if (dateOnly.getTime() === tomorrow.getTime()) {
+      label = "Tomorrow";
+    } else {
+      label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    return prefix ? `${prefix} ${label}` : label;
   };
 
   const isOverdue = todo.dueDate && new Date(todo.dueDate) < new Date() && !isDone;
+  const isDoDateToday = todo.doDate && (() => {
+    const doDate = new Date(todo.doDate);
+    const today = new Date();
+    doDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return doDate.getTime() === today.getTime();
+  })();
 
   return (
     <div
       className={cn(
         "group flex items-start gap-3 p-4 rounded-xl border bg-card transition-all hover:shadow-md",
-        isDone && "opacity-60"
+        isDone && "opacity-60",
+        isDoDateToday && !isDone && "ring-2 ring-primary/20"
       )}
     >
       <Checkbox
@@ -74,26 +108,26 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
           >
             {todo.title}
           </span>
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs",
-              priorityColors[todo.priority as keyof typeof priorityColors]
-            )}
-          >
-            {priorityLabels[todo.priority as keyof typeof priorityLabels]}
-          </Badge>
-          {todo.dueDate && (
+          {todo.category && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs capitalize",
+                categoryColors[todo.category.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200"
+              )}
+            >
+              {todo.category}
+            </Badge>
+          )}
+          {todo.priority && (
             <Badge
               variant="outline"
               className={cn(
                 "text-xs",
-                isOverdue
-                  ? "bg-red-50 text-red-600 border-red-200"
-                  : "bg-blue-50 text-blue-600 border-blue-200"
+                priorityColors[todo.priority]
               )}
             >
-              {formatDueDate(todo.dueDate)}
+              {priorityLabels[todo.priority]}
             </Badge>
           )}
         </div>
@@ -107,6 +141,34 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
             {todo.description}
           </p>
         )}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          {todo.dueDate && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs",
+                isOverdue
+                  ? "bg-red-50 text-red-600 border-red-200"
+                  : "bg-blue-50 text-blue-600 border-blue-200"
+              )}
+            >
+              Due: {formatDate(todo.dueDate)}
+            </Badge>
+          )}
+          {todo.doDate && !isDone && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs",
+                isDoDateToday
+                  ? "bg-primary/10 text-primary border-primary/20"
+                  : "bg-slate-50 text-slate-600 border-slate-200"
+              )}
+            >
+              Start: {formatDate(todo.doDate)}
+            </Badge>
+          )}
+        </div>
       </div>
       <Button
         variant="ghost"
@@ -128,3 +190,4 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
     </div>
   );
 }
+

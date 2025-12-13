@@ -12,31 +12,40 @@ interface Todo {
   title: string;
   description: string | null;
   status: string;
-  priority: number;
+  priority: number | null;
   dueDate: Date | null;
+  doDate: Date | null;
+  category: string | null;
   createdAt: Date;
   completedAt: Date | null;
 }
 
 export default function TodosPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "done">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchTodos = useCallback(async () => {
     try {
-      const params = filter !== "all" ? `?status=${filter}` : "";
-      const response = await fetch(`/api/todos${params}`);
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (categoryFilter) params.set("category", categoryFilter);
+      
+      const queryString = params.toString();
+      const response = await fetch(`/api/todos${queryString ? `?${queryString}` : ""}`);
       if (response.ok) {
         const data = await response.json();
         setTodos(data.todos);
+        setCategories(data.categories || []);
       }
     } catch (error) {
       console.error("Failed to fetch todos:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, [statusFilter, categoryFilter]);
 
   useEffect(() => {
     fetchTodos();
@@ -95,9 +104,6 @@ export default function TodosPage() {
     }
   };
 
-  const filteredTodos =
-    filter === "all" ? todos : todos.filter((t) => t.status === filter);
-
   const pendingCount = todos.filter((t) => t.status === "pending").length;
   const doneCount = todos.filter((t) => t.status === "done").length;
 
@@ -131,30 +137,55 @@ export default function TodosPage() {
           <AddTodo onAdd={handleAddTodo} />
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-6">
+        {/* Status filter tabs */}
+        <div className="flex gap-2 mb-4 flex-wrap">
           <Button
-            variant={filter === "all" ? "default" : "outline"}
+            variant={statusFilter === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter("all")}
+            onClick={() => setStatusFilter("all")}
           >
             All ({todos.length})
           </Button>
           <Button
-            variant={filter === "pending" ? "default" : "outline"}
+            variant={statusFilter === "pending" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter("pending")}
+            onClick={() => setStatusFilter("pending")}
           >
             Pending ({pendingCount})
           </Button>
           <Button
-            variant={filter === "done" ? "default" : "outline"}
+            variant={statusFilter === "done" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter("done")}
+            onClick={() => setStatusFilter("done")}
           >
             Completed ({doneCount})
           </Button>
         </div>
+
+        {/* Category filter tabs */}
+        {categories.length > 0 && (
+          <div className="flex gap-2 mb-6 flex-wrap">
+            <Button
+              variant={categoryFilter === null ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setCategoryFilter(null)}
+              className="text-xs"
+            >
+              All Categories
+            </Button>
+            {categories.map((cat) => (
+              <Button
+                key={cat}
+                variant={categoryFilter === cat ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setCategoryFilter(cat)}
+                className="text-xs capitalize"
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
+        )}
 
         {/* Todo list */}
         {isLoading ? (
@@ -162,7 +193,7 @@ export default function TodosPage() {
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
             <p className="text-muted-foreground mt-4">Loading tasks...</p>
           </div>
-        ) : filteredTodos.length === 0 ? (
+        ) : todos.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <svg
@@ -178,21 +209,23 @@ export default function TodosPage() {
               </svg>
             </div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              {filter === "all"
+              {statusFilter === "all" && !categoryFilter
                 ? "No tasks yet"
-                : filter === "pending"
+                : statusFilter === "pending"
                 ? "No pending tasks"
-                : "No completed tasks"}
+                : statusFilter === "done"
+                ? "No completed tasks"
+                : `No tasks in "${categoryFilter}"`}
             </h3>
             <p className="text-muted-foreground">
-              {filter === "all"
+              {statusFilter === "all" && !categoryFilter
                 ? "Add a task above or chat with Ziggy to get started!"
                 : ""}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredTodos.map((todo) => (
+            {todos.map((todo) => (
               <TodoItem
                 key={todo.id}
                 todo={todo}
@@ -208,3 +241,4 @@ export default function TodosPage() {
     </div>
   );
 }
+

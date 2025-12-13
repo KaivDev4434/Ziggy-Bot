@@ -34,7 +34,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, description, status, priority, dueDate } = body;
+    const { title, description, status, priority, dueDate, doDate, category } = body;
 
     const updateData: Record<string, unknown> = {};
     if (title !== undefined) updateData.title = title;
@@ -42,6 +42,9 @@ export async function PATCH(
     if (priority !== undefined) updateData.priority = priority;
     if (dueDate !== undefined)
       updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    if (doDate !== undefined)
+      updateData.doDate = doDate ? new Date(doDate) : null;
+    if (category !== undefined) updateData.category = category;
 
     if (status !== undefined) {
       updateData.status = status;
@@ -87,3 +90,5 @@ export async function DELETE(
     );
   }
 }
+
+

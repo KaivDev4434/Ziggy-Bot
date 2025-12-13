@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { HabitContributionGraph } from "./HabitContributionGraph";
 
 interface HabitRecord {
   id: string;
@@ -26,6 +28,7 @@ interface HabitCardProps {
 }
 
 export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
+  const [showGraph, setShowGraph] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -38,6 +41,7 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
   // Calculate streak
   const calculateStreak = () => {
     const sortedRecords = [...habit.records]
+      .filter((r) => r.completed)
       .map((r) => {
         const d = new Date(r.date);
         d.setHours(0, 0, 0, 0);
@@ -138,9 +142,9 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {/* Week view */}
-        <div className="flex justify-between mb-4">
+        <div className="flex justify-between">
           {last7Days.map((date, i) => {
             const isCompleted = isDateCompleted(date);
             const isToday = date.getTime() === today.getTime();
@@ -164,6 +168,32 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
               </div>
             );
           })}
+        </div>
+
+        {/* Expandable contribution graph */}
+        <div>
+          <button
+            onClick={() => setShowGraph(!showGraph)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center py-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className={cn("w-3 h-3 transition-transform", showGraph && "rotate-180")}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+            {showGraph ? "Hide" : "Show"} progress graph
+          </button>
+          
+          {showGraph && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <HabitContributionGraph records={habit.records} weeks={12} />
+            </div>
+          )}
         </div>
 
         {/* Today's toggle */}
@@ -196,3 +226,4 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
     </Card>
   );
 }
+

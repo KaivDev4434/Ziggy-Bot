@@ -14,7 +14,10 @@ model Message {
   id        String   @id @default(cuid())
   role      String   // "user" | "assistant"
   content   String
+  date      DateTime @default(now()) // date for grouping messages by day
   createdAt DateTime @default(now())
+
+  @@index([date])
 }
 
 model Todo {
@@ -22,8 +25,10 @@ model Todo {
   title       String
   description String?
   status      String    @default("pending") // pending, done
-  priority    Int       @default(2)
-  dueDate     DateTime?
+  priority    Int?      // 1=high, 2=medium, 3=low (optional)
+  dueDate     DateTime? // deadline (optional)
+  doDate      DateTime? // when to start working on it (optional)
+  category    String?   // dynamically assigned category (optional)
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 }
