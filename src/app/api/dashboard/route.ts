@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { getTodoStats } from "@/lib/services/todoService";
+import { getHabitStreaks } from "@/lib/services/habitService";
+import { DASHBOARD_LANDMARKS_QUERY } from "@/lib/constants";
 
 export async function GET() {
   try {
@@ -10,29 +13,22 @@ export async function GET() {
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    // Get todos stats
-    const [pendingTodos, completedThisWeek, totalTodos] = await Promise.all([
-      prisma.todo.count({ where: { status: "pending" } }),
-      prisma.todo.count({
-        where: {
-          status: "done",
-          completedAt: { gte: weekAgo },
-        },
-      }),
-      prisma.todo.count(),
-    ]);
-
-    // Get habits with today's completion status
-    const habits = await prisma.habit.findMany({
-      where: { active: true },
-      include: {
-        records: {
-          where: {
-            date: { gte: weekAgo },
+    const [todoStats, habitStreaks, habits, landmarks] = await Promise.all([
+      getTodoStats(),
+      getHabitStreaks(),
+      prisma.habit.findMany({
+        where: { active: true },
+        include: {
+          records: {
+            where: { date: { gte: weekAgo } },
           },
         },
-      },
-    });
+      }),
+      prisma.landmark.findMany({
+        orderBy: { date: "desc" },
+        take: DASHBOARD_LANDMARKS_QUERY,
+      }),
+    ]);
 
     const habitsCompletedToday = habits.filter((h) =>
       h.records.some((r) => {
@@ -53,55 +49,8 @@ export async function GET() {
         ? Math.round((actualCompletions / totalPossibleCompletions) * 100)
         : 0;
 
-    // Calculate streaks for each habit
-    const habitStreaks = habits.map((habit) => {
-      const sortedRecords = habit.records
-        .map((r) => {
-          const d = new Date(r.date);
-          d.setHours(0, 0, 0, 0);
-          return d.getTime();
-        })
-        .sort((a, b) => b - a);
-
-      let streak = 0;
-      const currentDate = new Date(today);
-
-      // Check if completed today
-      const completedToday = sortedRecords.includes(today.getTime());
-      if (!completedToday) {
-        currentDate.setDate(currentDate.getDate() - 1);
-      }
-
-      for (let i = 0; i < 365; i++) {
-        const checkTime = currentDate.getTime();
-        if (sortedRecords.includes(checkTime)) {
-          streak++;
-          currentDate.setDate(currentDate.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-
-      return {
-        id: habit.id,
-        name: habit.name,
-        streak,
-        completedToday,
-      };
-    });
-
-    // Get recent landmarks
-    const landmarks = await prisma.landmark.findMany({
-      orderBy: { date: "desc" },
-      take: 5,
-    });
-
     return NextResponse.json({
-      todos: {
-        pending: pendingTodos,
-        completedThisWeek,
-        total: totalTodos,
-      },
+      todos: todoStats,
       habits: {
         total: habits.length,
         completedToday: habitsCompletedToday,
@@ -118,5 +67,3 @@ export async function GET() {
     );
   }
 }
-
-

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { processMessage, buildAIContext } from "@/lib/ai";
 import { RECENT_MESSAGES_FOR_CONTEXT, HABIT_RECORDS_LOOKBACK } from "@/lib/constants";
-import { ExtractedTodo } from "@/types";
 import { cleanCitations, isPastDate, parseLocalDate } from "@/lib/utils";
+import { processTodoAction } from "@/lib/services/todoService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -191,123 +191,6 @@ export async function POST(request: NextRequest) {
       { error: "Failed to process message" },
       { status: 500 }
     );
-  }
-}
-
-// Helper function to process todo actions
-async function processTodoAction(
-  todo: ExtractedTodo,
-  existingTodos: { id: string; title: string; status: string }[]
-) {
-  const action = todo.action || "create";
-
-  // For update/complete/delete, try to find matching todo
-  let matchedTodoId = todo.id;
-  
-  if (!matchedTodoId && action !== "create") {
-    // Try to match by title (fuzzy match)
-    const normalizedTitle = todo.title.toLowerCase().trim();
-    const match = existingTodos.find((t) => {
-      const existingTitle = t.title.toLowerCase().trim();
-      return (
-        existingTitle === normalizedTitle ||
-        existingTitle.includes(normalizedTitle) ||
-        normalizedTitle.includes(existingTitle)
-      );
-    });
-    matchedTodoId = match?.id;
-  }
-
-  switch (action) {
-    case "create": {
-      // Check for duplicate before creating
-      const normalizedTitle = todo.title.toLowerCase().trim();
-      const existingMatch = existingTodos.find((t) => {
-        const existingTitle = t.title.toLowerCase().trim();
-        // Exact match or very similar
-        return existingTitle === normalizedTitle;
-      });
-
-      if (existingMatch) {
-        // Task already exists - update it instead of creating duplicate
-        const updateData: Record<string, unknown> = {};
-        if (todo.description) updateData.description = todo.description;
-        if (todo.priority) updateData.priority = todo.priority;
-        if (todo.dueDate) updateData.dueDate = new Date(todo.dueDate);
-        if (todo.doDate) updateData.doDate = new Date(todo.doDate);
-        if (todo.category) updateData.category = todo.category;
-
-        if (Object.keys(updateData).length > 0) {
-          await prisma.todo.update({
-            where: { id: existingMatch.id },
-            data: updateData,
-          });
-        }
-        // Don't create a new one
-      } else {
-        // No duplicate found, create new task
-        await prisma.todo.create({
-          data: {
-            title: todo.title,
-            description: todo.description || null,
-            priority: todo.priority || null,
-            dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
-            doDate: todo.doDate ? new Date(todo.doDate) : null,
-            category: todo.category || null,
-          },
-        });
-      }
-      break;
-    }
-
-    case "update":
-      if (matchedTodoId) {
-        const updateData: Record<string, unknown> = {};
-        if (todo.title) updateData.title = todo.title;
-        if (todo.description !== undefined) updateData.description = todo.description;
-        if (todo.priority !== undefined) updateData.priority = todo.priority;
-        if (todo.dueDate !== undefined) updateData.dueDate = todo.dueDate ? new Date(todo.dueDate) : null;
-        if (todo.doDate !== undefined) updateData.doDate = todo.doDate ? new Date(todo.doDate) : null;
-        if (todo.category !== undefined) updateData.category = todo.category;
-
-        await prisma.todo.update({
-          where: { id: matchedTodoId },
-          data: updateData,
-        });
-      } else {
-        // If no match found for update, create as new
-        await prisma.todo.create({
-          data: {
-            title: todo.title,
-            description: todo.description || null,
-            priority: todo.priority || null,
-            dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
-            doDate: todo.doDate ? new Date(todo.doDate) : null,
-            category: todo.category || null,
-          },
-        });
-      }
-      break;
-
-    case "complete":
-      if (matchedTodoId) {
-        await prisma.todo.update({
-          where: { id: matchedTodoId },
-          data: {
-            status: "done",
-            completedAt: new Date(),
-          },
-        });
-      }
-      break;
-
-    case "delete":
-      if (matchedTodoId) {
-        await prisma.todo.delete({
-          where: { id: matchedTodoId },
-        });
-      }
-      break;
   }
 }
 
