@@ -51,7 +51,7 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
       .sort((a, b) => b - a);
 
     let streak = 0;
-    let currentDate = new Date();
+    const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
 
     // If not completed today, start checking from yesterday

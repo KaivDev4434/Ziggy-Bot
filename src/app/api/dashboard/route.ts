@@ -64,7 +64,7 @@ export async function GET() {
         .sort((a, b) => b - a);
 
       let streak = 0;
-      let currentDate = new Date(today);
+      const currentDate = new Date(today);
 
       // Check if completed today
       const completedToday = sortedRecords.includes(today.getTime());

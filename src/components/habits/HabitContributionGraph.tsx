@@ -70,7 +70,6 @@ export function HabitContributionGraph({
   const grid = generateGrid();
 
   // Calculate stats
-  const totalDays = weeks * 7;
   const completedCount = grid.flat().filter((d) => d.completed && !d.future).length;
   const availableDays = grid.flat().filter((d) => !d.future).length;
   const completionRate = availableDays > 0 ? Math.round((completedCount / availableDays) * 100) : 0;
