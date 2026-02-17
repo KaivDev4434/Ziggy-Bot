@@ -4,6 +4,7 @@ import { processMessage, buildAIContext } from "@/lib/ai";
 import { RECENT_MESSAGES_FOR_CONTEXT, HABIT_RECORDS_LOOKBACK } from "@/lib/constants";
 import { cleanCitations, isPastDate, parseLocalDate } from "@/lib/utils";
 import { processTodoAction } from "@/lib/services/todoService";
+import { processAndSaveMemories } from "@/lib/services/memoryService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -172,6 +173,11 @@ export async function POST(request: NextRequest) {
         date: messageDate,
       },
     });
+
+    // Extract and save memories in the background (non-blocking)
+    processAndSaveMemories(message, cleanedResponse).catch((err) =>
+      console.error("Background memory extraction failed:", err)
+    );
 
     return NextResponse.json({
       userMessage,

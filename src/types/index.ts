@@ -194,4 +194,24 @@ export interface AIContext {
     dueDate: string;
     daysLeft: number;
   }[];
+  memories?: string; // injected memory context
+}
+
+// --- Memory ---
+export type MemoryCategory =
+  | "preference"
+  | "goal"
+  | "personal"
+  | "work"
+  | "relationship"
+  | "health";
+
+export interface Memory {
+  id: string;
+  fact: string;
+  category: MemoryCategory;
+  source: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  active: boolean;
 }

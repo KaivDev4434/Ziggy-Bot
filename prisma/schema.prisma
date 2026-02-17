@@ -57,3 +57,16 @@ model Landmark {
   notes     String?
   createdAt DateTime @default(now())
 }
+
+model Memory {
+  id        String   @id @default(cuid())
+  fact      String   // e.g. "User prefers morning workouts"
+  category  String   // preference, goal, personal, work, relationship, health
+  source    String   @default("conversation") // conversation, manual
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  active    Boolean  @default(true)
+
+  @@index([category])
+  @@index([active])
+}

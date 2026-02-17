@@ -5,6 +5,7 @@
 import { RECENT_MESSAGES_FOR_CONTEXT, UPCOMING_DEADLINE_DAYS } from "@/lib/constants";
 import { chat } from "@/lib/ai/registry";
 import { calculateStreak } from "@/lib/services/habitService";
+import { buildMemoryContext } from "@/lib/services/memoryService";
 import type { AIContext, ExtractedTodo, AIExtractions } from "@/types";
 
 export type { AIContext, ExtractedTodo, ExtractedHabit, ExtractedLandmark, AIExtractions } from "@/types";
@@ -14,7 +15,7 @@ interface Message {
   content: string;
 }
 
-function buildSystemPrompt(context?: AIContext): string {
+function buildSystemPrompt(context?: AIContext, memoryContext?: string): string {
   let contextSection = "";
   
   if (context) {
@@ -55,7 +56,7 @@ ${context.upcomingDeadlines.length > 0
   }
 
   return `You are Ziggy, a warm and friendly personal AI assistant. You help users organize their lives by understanding their messages and extracting actionable items.
-${contextSection}
+${contextSection}${memoryContext || ""}
 When users chat with you:
 1. Respond conversationally in a helpful, encouraging tone
 2. Extract any tasks, habits, or life landmarks mentioned
@@ -127,6 +128,14 @@ export async function processMessage(
   recentMessages: { role: string; content: string }[],
   context?: AIContext
 ): Promise<AIExtractions> {
+  // Load persistent memories to inject into context
+  let memoryContext = "";
+  try {
+    memoryContext = await buildMemoryContext();
+  } catch (error) {
+    console.error("Failed to load memories:", error);
+  }
+
   // Filter recent messages to ensure proper alternation (user/assistant/user/assistant...)
   const filteredMessages: Message[] = [];
   let lastRole: string | null = null;
@@ -149,7 +158,7 @@ export async function processMessage(
     filteredMessages.pop();
   }
 
-  const systemPrompt = buildSystemPrompt(context);
+  const systemPrompt = buildSystemPrompt(context, memoryContext);
 
   const messages: Message[] = [
     { role: "system", content: systemPrompt },
