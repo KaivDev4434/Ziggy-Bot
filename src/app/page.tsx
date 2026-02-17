@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getEffectiveDate, isLateNightMode, toLocalDateString, isSameDay } from "@/lib/utils";
 import { getLocation, LocationInfo } from "@/lib/location";
+import { STORAGE_KEYS } from "@/lib/constants";
 
 interface Message {
   id: string;
@@ -16,14 +17,6 @@ interface Message {
   date: Date;
   createdAt: Date;
 }
-
-// Session storage keys
-const STORAGE_KEYS = {
-  SELECTED_DATE: "ziggy_selected_date",
-  MESSAGES_CACHE: "ziggy_messages_cache",
-  MESSAGE_DATES: "ziggy_message_dates",
-  LAST_FETCHED_DATE: "ziggy_last_fetched_date",
-};
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);

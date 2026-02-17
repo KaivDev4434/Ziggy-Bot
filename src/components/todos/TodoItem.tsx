@@ -5,23 +5,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-interface Todo {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: number | null;
-  dueDate: Date | null;
-  doDate: Date | null;
-  category: string | null;
-  createdAt: Date;
-  completedAt: Date | null;
-}
+import { PRIORITY_COLORS, PRIORITY_LABELS, getCategoryColor } from "@/lib/constants";
+import type { Todo, TodoStatus } from "@/types";
 
 interface TodoItemProps {
   todo: Todo;
-  onToggle: (id: string, status: string) => void;
+  onToggle: (id: string, status: TodoStatus) => void;
   onDelete: (id: string) => void;
   onEdit?: (todo: Todo) => void;
 }
@@ -29,31 +18,7 @@ interface TodoItemProps {
 export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
   const isDone = todo.status === "done";
 
-  const priorityColors: Record<number, string> = {
-    1: "bg-red-100 text-red-700 border-red-200",
-    2: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    3: "bg-green-100 text-green-700 border-green-200",
-  };
-
-  const priorityLabels: Record<number, string> = {
-    1: "High",
-    2: "Medium",
-    3: "Low",
-  };
-
-  const categoryColors: Record<string, string> = {
-    work: "bg-blue-100 text-blue-700 border-blue-200",
-    personal: "bg-purple-100 text-purple-700 border-purple-200",
-    chores: "bg-orange-100 text-orange-700 border-orange-200",
-    groceries: "bg-green-100 text-green-700 border-green-200",
-    finance: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    health: "bg-pink-100 text-pink-700 border-pink-200",
-    projects: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    errands: "bg-amber-100 text-amber-700 border-amber-200",
-    shopping: "bg-teal-100 text-teal-700 border-teal-200",
-  };
-
-  const formatDate = (date: Date, prefix?: string) => {
+  const formatDate = (date: Date | string, prefix?: string) => {
     const d = new Date(date);
     const today = new Date();
     const tomorrow = new Date(today);
@@ -120,7 +85,7 @@ export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
               variant="outline"
               className={cn(
                 "text-xs capitalize",
-                categoryColors[todo.category.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-200"
+                getCategoryColor(todo.category)
               )}
             >
               {todo.category}
@@ -131,10 +96,10 @@ export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
               variant="outline"
               className={cn(
                 "text-xs",
-                priorityColors[todo.priority]
+                PRIORITY_COLORS[todo.priority]
               )}
             >
-              {priorityLabels[todo.priority]}
+              {PRIORITY_LABELS[todo.priority]}
             </Badge>
           )}
         </div>

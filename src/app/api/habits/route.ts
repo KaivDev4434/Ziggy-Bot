@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { HABIT_RECORDS_LOOKBACK } from "@/lib/constants";
 
 // GET /api/habits - List all habits
 export async function GET() {
@@ -10,7 +11,7 @@ export async function GET() {
         records: {
           where: {
             date: {
-              gte: new Date(new Date().setDate(new Date().getDate() - 30)),
+              gte: new Date(new Date().setDate(new Date().getDate() - HABIT_RECORDS_LOOKBACK)),
             },
           },
           orderBy: { date: "desc" },

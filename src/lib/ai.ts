@@ -1,5 +1,10 @@
 // AI Service for Perplexity API integration
 
+import { AI_CONFIG, RECENT_MESSAGES_FOR_CONTEXT, MAX_STREAK_DAYS, UPCOMING_DEADLINE_DAYS } from "@/lib/constants";
+import type { AIContext, ExtractedTodo, AIExtractions } from "@/types";
+
+export type { AIContext, ExtractedTodo, ExtractedHabit, ExtractedLandmark, AIExtractions } from "@/types";
+
 interface Message {
   role: "system" | "user" | "assistant";
   content: string;
@@ -12,66 +17,6 @@ interface PerplexityResponse {
       content: string;
     };
   }[];
-}
-
-// Context for AI to understand current state
-export interface AIContext {
-  currentDateTime: string;
-  timezone: string;
-  location?: {
-    city?: string;
-    country?: string;
-    lat?: number;
-    lon?: number;
-  };
-  pendingTodos: {
-    id: string;
-    title: string;
-    category?: string | null;
-    priority?: number | null;
-    dueDate?: string | null;
-    doDate?: string | null;
-  }[];
-  todayHabits: {
-    name: string;
-    completedToday: boolean;
-    streak: number;
-  }[];
-  upcomingDeadlines: {
-    title: string;
-    dueDate: string;
-    daysLeft: number;
-  }[];
-}
-
-// Extracted data structures
-export interface ExtractedTodo {
-  action: "create" | "update" | "complete" | "delete";
-  id?: string; // for update/complete/delete actions
-  title: string;
-  description?: string;
-  priority?: number;
-  dueDate?: string;
-  doDate?: string;
-  category?: string;
-}
-
-export interface ExtractedHabit {
-  name: string;
-  frequency: string;
-}
-
-export interface ExtractedLandmark {
-  title: string;
-  date: string;
-  notes?: string;
-}
-
-export interface AIExtractions {
-  todos: ExtractedTodo[];
-  habits: ExtractedHabit[];
-  landmarks: ExtractedLandmark[];
-  conversationalResponse: string;
 }
 
 function buildSystemPrompt(context?: AIContext): string {
@@ -205,7 +150,7 @@ export async function processMessage(
   const filteredMessages: Message[] = [];
   let lastRole: string | null = null;
   
-  for (const m of recentMessages.slice(-10)) {
+  for (const m of recentMessages.slice(-RECENT_MESSAGES_FOR_CONTEXT)) {
     // Skip if same role as previous (to ensure alternation)
     if (m.role === lastRole) continue;
     // Skip the current user message if it's in recent messages (we'll add it at the end)
@@ -237,17 +182,17 @@ export async function processMessage(
   ];
 
   try {
-    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+    const response = await fetch(AI_CONFIG.PERPLEXITY_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "sonar",
+        model: AI_CONFIG.DEFAULT_MODEL,
         messages,
-        max_tokens: 1500,
-        temperature: 0.3,
+        max_tokens: AI_CONFIG.MAX_TOKENS,
+        temperature: AI_CONFIG.TEMPERATURE,
       }),
     });
 
@@ -388,7 +333,7 @@ export function buildAIContext(
     }
     checkDate.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < 365; i++) {
+    for (let i = 0; i < MAX_STREAK_DAYS; i++) {
       if (sortedDates.includes(checkDate.getTime())) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
@@ -409,7 +354,7 @@ export function buildAIContext(
     .filter((t) => {
       if (t.status !== "pending" || !t.dueDate) return false;
       const daysLeft = daysBetweenLocal(today, new Date(t.dueDate));
-      return daysLeft >= 0 && daysLeft <= 7;
+      return daysLeft >= 0 && daysLeft <= UPCOMING_DEADLINE_DAYS;
     })
     .map((t) => ({
       title: t.title,

@@ -8,21 +8,8 @@ import { EditTodoModal } from "@/components/todos/EditTodoModal";
 import { AppShell } from "@/components/layout";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
-
-interface Todo {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: number | null;
-  dueDate: Date | null;
-  doDate: Date | null;
-  category: string | null;
-  createdAt: Date;
-  completedAt: Date | null;
-}
-
-const HIDE_COMPLETED_KEY = "ziggy_hide_completed";
+import { STORAGE_KEYS, getCategoryColor, getCategoryDotColor } from "@/lib/constants";
+import type { Todo, TodoStatus } from "@/types";
 
 export default function TodosPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -35,7 +22,7 @@ export default function TodosPage() {
 
   // Load hide completed preference
   useEffect(() => {
-    const stored = localStorage.getItem(HIDE_COMPLETED_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.HIDE_COMPLETED);
     if (stored === "true") {
       setHideCompleted(true);
     }
@@ -45,7 +32,7 @@ export default function TodosPage() {
   const toggleHideCompleted = () => {
     const newValue = !hideCompleted;
     setHideCompleted(newValue);
-    localStorage.setItem(HIDE_COMPLETED_KEY, String(newValue));
+    localStorage.setItem(STORAGE_KEYS.HIDE_COMPLETED, String(newValue));
   };
 
   const fetchTodos = useCallback(async () => {
@@ -87,7 +74,7 @@ export default function TodosPage() {
     }
   };
 
-  const handleToggleTodo = async (id: string, status: string) => {
+  const handleToggleTodo = async (id: string, status: TodoStatus) => {
     try {
       const response = await fetch(`/api/todos/${id}`, {
         method: "PATCH",
@@ -171,37 +158,6 @@ export default function TodosPage() {
     }
     return false;
   }).length;
-
-  // Category color helpers
-  const getCategoryColor = (cat: string) => {
-    const colors: Record<string, string> = {
-      work: "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700",
-      personal: "bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-700",
-      chores: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700",
-      groceries: "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700",
-      finance: "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700",
-      health: "bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-700",
-      projects: "bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-700",
-      errands: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700",
-      shopping: "bg-teal-100 text-teal-700 border-teal-300 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-700",
-    };
-    return colors[cat.toLowerCase()] || "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600";
-  };
-
-  const getCategoryDotColor = (cat: string) => {
-    const colors: Record<string, string> = {
-      work: "bg-blue-500",
-      personal: "bg-purple-500",
-      chores: "bg-orange-500",
-      groceries: "bg-green-500",
-      finance: "bg-emerald-500",
-      health: "bg-pink-500",
-      projects: "bg-indigo-500",
-      errands: "bg-amber-500",
-      shopping: "bg-teal-500",
-    };
-    return colors[cat.toLowerCase()] || "bg-gray-500";
-  };
 
   return (
     <AppShell>

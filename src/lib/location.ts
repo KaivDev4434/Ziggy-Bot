@@ -1,5 +1,7 @@
 // Location utilities for browser geolocation
 
+import { STORAGE_KEYS, LOCATION_EXPIRY_MS, LOCATION_TIMEOUT_MS, LOCATION_MAX_AGE_MS } from "@/lib/constants";
+
 export interface Coordinates {
   lat: number;
   lon: number;
@@ -11,9 +13,6 @@ export interface LocationInfo {
   city?: string;
   country?: string;
 }
-
-const LOCATION_STORAGE_KEY = 'ziggy_user_location';
-const LOCATION_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface StoredLocation {
   coords: Coordinates;
@@ -88,8 +87,8 @@ export async function getLocation(): Promise<LocationInfo | null> {
         resolve(null);
       },
       {
-        timeout: 10000,
-        maximumAge: 300000, // Accept cached position up to 5 minutes old
+      timeout: LOCATION_TIMEOUT_MS,
+      maximumAge: LOCATION_MAX_AGE_MS,
         enableHighAccuracy: false, // Don't need high accuracy for weather
       }
     );
@@ -103,7 +102,7 @@ function getCachedLocation(): LocationInfo | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const stored = localStorage.getItem(LOCATION_STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.USER_LOCATION);
     if (!stored) return null;
 
     const data: StoredLocation = JSON.parse(stored);
@@ -119,7 +118,7 @@ function getCachedLocation(): LocationInfo | null {
     }
 
     // Expired, remove it
-    localStorage.removeItem(LOCATION_STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEYS.USER_LOCATION);
     return null;
   } catch {
     return null;
@@ -139,7 +138,7 @@ function cacheLocation(location: LocationInfo): void {
       country: location.country,
       timestamp: Date.now(),
     };
-    localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(STORAGE_KEYS.USER_LOCATION, JSON.stringify(data));
   } catch {
     // localStorage might be full or disabled
   }
@@ -150,7 +149,7 @@ function cacheLocation(location: LocationInfo): void {
  */
 export function clearCachedLocation(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(LOCATION_STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEYS.USER_LOCATION);
 }
 
 /**

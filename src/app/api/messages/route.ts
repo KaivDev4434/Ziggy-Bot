@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-
-// Retention period in days
-const RETENTION_DAYS = 90;
+import { MESSAGE_RETENTION_DAYS, MESSAGE_CLEANUP_INTERVAL_MS, MAX_MESSAGES_PER_DAY } from "@/lib/constants";
 
 // Run cleanup periodically (not on every request, use a simple time-based check)
 let lastCleanupTime = 0;
-const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // Once per day
 
 async function cleanupOldMessages() {
   const now = Date.now();
   
   // Skip if we cleaned up recently
-  if (now - lastCleanupTime < CLEANUP_INTERVAL_MS) {
+  if (now - lastCleanupTime < MESSAGE_CLEANUP_INTERVAL_MS) {
     return;
   }
   
@@ -20,7 +17,7 @@ async function cleanupOldMessages() {
   
   try {
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+    cutoffDate.setDate(cutoffDate.getDate() - MESSAGE_RETENTION_DAYS);
     cutoffDate.setHours(0, 0, 0, 0);
     
     const result = await prisma.message.deleteMany({
@@ -32,7 +29,7 @@ async function cleanupOldMessages() {
     });
     
     if (result.count > 0) {
-      console.log(`Cleaned up ${result.count} messages older than ${RETENTION_DAYS} days`);
+      console.log(`Cleaned up ${result.count} messages older than ${MESSAGE_RETENTION_DAYS} days`);
     }
   } catch (error) {
     console.error("Failed to cleanup old messages:", error);
@@ -70,13 +67,13 @@ export async function GET(request: NextRequest) {
     const messages = await prisma.message.findMany({
       where,
       orderBy: { createdAt: "asc" },
-      take: 100, // Limit to last 100 messages per day
+      take: MAX_MESSAGES_PER_DAY,
     });
 
     // Get dates that have messages (for calendar dots)
     // Only get dates within retention period
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+    cutoffDate.setDate(cutoffDate.getDate() - MESSAGE_RETENTION_DAYS);
     cutoffDate.setHours(0, 0, 0, 0);
 
     const messageDates = await prisma.message.groupBy({

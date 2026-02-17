@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/constants";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
@@ -179,7 +180,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   exit={{ opacity: 0 }}
                   className="text-xs text-muted-foreground"
                 >
-                  v1.1
+                  {APP_VERSION}
                 </motion.span>
               )}
             </AnimatePresence>

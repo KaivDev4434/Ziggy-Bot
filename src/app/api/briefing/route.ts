@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { generateBriefing } from "@/lib/briefing";
+import { HABIT_RECORDS_LOOKBACK } from "@/lib/constants";
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
         include: {
           records: {
             orderBy: { date: "desc" },
-            take: 30,
+            take: HABIT_RECORDS_LOOKBACK,
           },
         },
       }),

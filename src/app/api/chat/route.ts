@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { processMessage, buildAIContext, ExtractedTodo } from "@/lib/ai";
+import { processMessage, buildAIContext } from "@/lib/ai";
+import { RECENT_MESSAGES_FOR_CONTEXT, HABIT_RECORDS_LOOKBACK } from "@/lib/constants";
+import { ExtractedTodo } from "@/types";
 import { cleanCitations, isPastDate, parseLocalDate } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 10,
+      take: RECENT_MESSAGES_FOR_CONTEXT,
     });
 
     // Fetch current todos and habits for AI context
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
         include: {
           records: {
             orderBy: { date: "desc" },
-            take: 30, // Last 30 records for streak calculation
+            take: HABIT_RECORDS_LOOKBACK,
           },
         },
       }),

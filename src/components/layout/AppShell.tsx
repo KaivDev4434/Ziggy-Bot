@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "@/components/BottomNav";
-
-const SIDEBAR_KEY = "ziggy_sidebar_open";
+import { STORAGE_KEYS } from "@/lib/constants";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -16,7 +15,7 @@ export function AppShell({ children }: AppShellProps) {
 
   // Load sidebar state from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.SIDEBAR_OPEN);
     if (stored !== null) {
       setSidebarOpen(stored === "true");
     }
@@ -27,7 +26,7 @@ export function AppShell({ children }: AppShellProps) {
   const handleToggle = () => {
     const newState = !sidebarOpen;
     setSidebarOpen(newState);
-    localStorage.setItem(SIDEBAR_KEY, String(newState));
+    localStorage.setItem(STORAGE_KEYS.SIDEBAR_OPEN, String(newState));
   };
 
   // Prevent hydration mismatch
