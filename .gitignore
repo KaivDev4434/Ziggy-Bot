@@ -1,15 +1,13 @@
 # Dependencies
 node_modules/
-*/node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Production builds
-/frontend/build/
-/frontend/dist/
-/backend/dist/
-/backend/build/
+# Next.js
+.next/
+out/
+
+# Build
+*.tsbuildinfo
+next-env.d.ts
 
 # Environment variables
 .env
@@ -27,50 +25,22 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Docker
-docker-compose.override.yml
-.dockerignore
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Logs
-logs/
-*.log
-loglevel=silent
+# PWA generated files
+public/sw.js
+public/workbox-*.js
 
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Database
-/data/
-mongodb_data/
-redis_data/
+# Database (local dev)
+prisma/ziggy.db
 
 # Testing
 coverage/
 .nyc_output/
-test-results/
-.coverage/
 
 # Temporary files
 tmp/
 temp/
-
-# LLM models and data
-llm_models/
-ollama_data/
-
-# API keys (backup - should be in .env)
-*.key
-*.pem
-
-# Package manager files
-package-lock.json
-yarn.lock
-.pnpm-debug.log*
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.* 
