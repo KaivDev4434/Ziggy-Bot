@@ -1,6 +1,10 @@
-// AI Service for Perplexity API integration
+// AI Chat Processing Service
+// Handles message processing, system prompt building, and response parsing.
+// Uses the AI provider registry for model-agnostic communication.
 
-import { AI_CONFIG, RECENT_MESSAGES_FOR_CONTEXT, MAX_STREAK_DAYS, UPCOMING_DEADLINE_DAYS } from "@/lib/constants";
+import { RECENT_MESSAGES_FOR_CONTEXT, UPCOMING_DEADLINE_DAYS } from "@/lib/constants";
+import { chat } from "@/lib/ai/registry";
+import { calculateStreak } from "@/lib/services/habitService";
 import type { AIContext, ExtractedTodo, AIExtractions } from "@/types";
 
 export type { AIContext, ExtractedTodo, ExtractedHabit, ExtractedLandmark, AIExtractions } from "@/types";
@@ -8,15 +12,6 @@ export type { AIContext, ExtractedTodo, ExtractedHabit, ExtractedLandmark, AIExt
 interface Message {
   role: "system" | "user" | "assistant";
   content: string;
-}
-
-interface PerplexityResponse {
-  choices: {
-    message: {
-      role: string;
-      content: string;
-    };
-  }[];
 }
 
 function buildSystemPrompt(context?: AIContext): string {
@@ -132,28 +127,12 @@ export async function processMessage(
   recentMessages: { role: string; content: string }[],
   context?: AIContext
 ): Promise<AIExtractions> {
-  const apiKey = process.env.PERPLEXITY_API_KEY;
-
-  if (!apiKey) {
-    // Return a fallback response when API key is not configured
-    return {
-      todos: [],
-      habits: [],
-      landmarks: [],
-      conversationalResponse:
-        "I'm not fully configured yet! Please add your Perplexity API key to the .env file to enable AI features. In the meantime, I can still help you track your tasks manually.",
-    };
-  }
-
   // Filter recent messages to ensure proper alternation (user/assistant/user/assistant...)
-  // Perplexity API requires messages to alternate after the system prompt
   const filteredMessages: Message[] = [];
   let lastRole: string | null = null;
   
   for (const m of recentMessages.slice(-RECENT_MESSAGES_FOR_CONTEXT)) {
-    // Skip if same role as previous (to ensure alternation)
     if (m.role === lastRole) continue;
-    // Skip the current user message if it's in recent messages (we'll add it at the end)
     if (m.role === "user" && m.content === userMessage) continue;
     filteredMessages.push({
       role: m.role as "user" | "assistant",
@@ -162,13 +141,10 @@ export async function processMessage(
     lastRole = m.role;
   }
   
-  // Ensure we start with a user message after system (remove leading assistant messages)
   while (filteredMessages.length > 0 && filteredMessages[0].role === "assistant") {
     filteredMessages.shift();
   }
   
-  // Ensure the last message before new user message is from assistant (not user)
-  // If last is user, remove it to avoid user-user sequence
   while (filteredMessages.length > 0 && filteredMessages[filteredMessages.length - 1].role === "user") {
     filteredMessages.pop();
   }
@@ -182,31 +158,12 @@ export async function processMessage(
   ];
 
   try {
-    const response = await fetch(AI_CONFIG.PERPLEXITY_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: AI_CONFIG.DEFAULT_MODEL,
-        messages,
-        max_tokens: AI_CONFIG.MAX_TOKENS,
-        temperature: AI_CONFIG.TEMPERATURE,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Perplexity API error: ${response.status} - ${errorBody}`);
-    }
-
-    const data: PerplexityResponse = await response.json();
-    const content = data.choices[0]?.message?.content || "";
+    // Use the provider registry -- automatically selects the configured provider
+    const result = await chat(messages);
+    const content = result.content;
 
     // Parse the JSON response
     try {
-      // Handle potential markdown code blocks in response
       let jsonContent = content;
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (jsonMatch) {
@@ -215,21 +172,18 @@ export async function processMessage(
       
       const parsed = JSON.parse(jsonContent);
       
-      // Normalize todos to ensure action field exists
       const normalizedTodos = (parsed.todos || []).map((todo: ExtractedTodo) => ({
         ...todo,
-        action: todo.action || "create", // default to create for backwards compatibility
+        action: todo.action || "create",
       }));
       
       return {
         todos: normalizedTodos,
         habits: parsed.habits || [],
         landmarks: parsed.landmarks || [],
-        conversationalResponse:
-          parsed.response || "I understood your message!",
+        conversationalResponse: parsed.response || "I understood your message!",
       };
     } catch {
-      // If parsing fails, treat the whole response as conversational
       return {
         todos: [],
         habits: [],
@@ -243,13 +197,13 @@ export async function processMessage(
       todos: [],
       habits: [],
       landmarks: [],
-      conversationalResponse:
-        "I had trouble processing that. Could you try again?",
+      conversationalResponse: "I had trouble processing that. Could you try again?",
     };
   }
 }
 
-// Helper to format date to local YYYY-MM-DD without timezone shift
+// --- Date helpers ---
+
 function toLocalDateString(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -257,23 +211,14 @@ function toLocalDateString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// Helper to check if two dates are the same day (local)
-function isSameLocalDay(date1: Date, date2: Date): boolean {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-}
-
-// Calculate days between two dates using local time
 function daysBetweenLocal(from: Date, to: Date): number {
   const fromLocal = new Date(from.getFullYear(), from.getMonth(), from.getDate());
   const toLocal = new Date(to.getFullYear(), to.getMonth(), to.getDate());
   return Math.round((toLocal.getTime() - fromLocal.getTime()) / (24 * 60 * 60 * 1000));
 }
 
-// Helper to build AI context from database data
+// --- Context Builder ---
+
 export function buildAIContext(
   todos: {
     id: string;
@@ -298,7 +243,6 @@ export function buildAIContext(
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Pending todos - use local date formatting
   const pendingTodos = todos
     .filter((t) => t.status === "pending")
     .map((t) => ({
@@ -310,46 +254,16 @@ export function buildAIContext(
       doDate: t.doDate ? toLocalDateString(new Date(t.doDate)) : null,
     }));
 
-  // Today's habits with streak calculation
+  // Use shared streak calculation from habitService
   const todayHabits = habits.map((h) => {
-    const todayRecord = h.records.find((r) => 
-      isSameLocalDay(new Date(r.date), today)
-    );
-
-    // Calculate streak
-    let streak = 0;
-    const sortedDates = h.records
-      .filter((r) => r.completed)
-      .map((r) => {
-        const d = new Date(r.date);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime();
-      })
-      .sort((a, b) => b - a);
-
-    const checkDate = new Date(today);
-    if (!todayRecord?.completed) {
-      checkDate.setDate(checkDate.getDate() - 1);
-    }
-    checkDate.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < MAX_STREAK_DAYS; i++) {
-      if (sortedDates.includes(checkDate.getTime())) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-
+    const { streak, completedToday } = calculateStreak(h.records, today);
     return {
       name: h.name,
-      completedToday: !!todayRecord?.completed,
+      completedToday,
       streak,
     };
   });
 
-  // Upcoming deadlines - use local date comparison
   const upcomingDeadlines = todos
     .filter((t) => {
       if (t.status !== "pending" || !t.dueDate) return false;
@@ -363,7 +277,6 @@ export function buildAIContext(
     }))
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
-  // Get timezone
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return {
@@ -383,4 +296,3 @@ export function buildAIContext(
     upcomingDeadlines,
   };
 }
-
