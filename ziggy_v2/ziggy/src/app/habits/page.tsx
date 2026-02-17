@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { HabitCard } from "@/components/habits/HabitCard";
 import { AddHabit } from "@/components/habits/AddHabit";
-import { BottomNav } from "@/components/BottomNav";
+import { AppShell } from "@/components/layout";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
 
 interface HabitRecord {
@@ -99,29 +100,33 @@ export default function HabitsPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-md">
-                  <span className="text-white font-bold text-lg">Z</span>
+    <AppShell>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="bg-card border-b border-border sticky top-0 z-10">
+          <div className="max-w-4xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Link href="/">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-md">
+                    <span className="text-white font-bold text-lg">Z</span>
+                  </div>
+                </Link>
+                <div>
+                  <h1 className="text-xl font-semibold text-foreground">
+                    Habits
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    {completedToday} of {habits.length} completed today
+                  </p>
                 </div>
-              </Link>
-              <div>
-                <h1 className="text-xl font-semibold text-foreground">
-                  Habits
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {completedToday} of {habits.length} completed today
-                </p>
+              </div>
+              <div className="lg:hidden">
+                <ThemeToggle />
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* Main content */}
       <main className="max-w-4xl mx-auto px-6 py-6">
@@ -169,10 +174,9 @@ export default function HabitsPage() {
             ))}
           </div>
         )}
-      </main>
-
-      <BottomNav />
-    </div>
+        </main>
+      </div>
+    </AppShell>
   );
 }
 

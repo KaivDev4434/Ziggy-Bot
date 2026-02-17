@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -17,7 +18,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.2 }}
       className={cn(
         "flex w-full mb-4",
         isUser ? "justify-end" : "justify-start"
@@ -58,8 +62,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           })}
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 }
-
-

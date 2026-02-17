@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,13 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
   };
 
   return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+    >
     <Card className="group">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
@@ -189,11 +197,21 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
             {showGraph ? "Hide" : "Show"} progress graph
           </button>
           
-          {showGraph && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <HabitContributionGraph records={habit.records} weeks={12} />
-            </div>
-          )}
+          <AnimatePresence>
+            {showGraph && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 pt-3 border-t border-border">
+                  <HabitContributionGraph records={habit.records} weeks={12} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Today's toggle */}
@@ -224,6 +242,7 @@ export function HabitCard({ habit, onToggleToday, onDelete }: HabitCardProps) {
         </Button>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
 

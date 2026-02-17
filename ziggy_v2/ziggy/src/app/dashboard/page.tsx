@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BottomNav } from "@/components/BottomNav";
+import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/layout";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
 
 interface DashboardData {
@@ -11,6 +14,7 @@ interface DashboardData {
     pending: number;
     completedThisWeek: number;
     total: number;
+    todayTasks: { id: string; title: string; priority: number | null }[];
   };
   habits: {
     total: number;
@@ -31,9 +35,32 @@ interface DashboardData {
   }[];
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [greeting, setGreeting] = useState("Hello");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting("Good morning");
+    else if (hour < 17) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,204 +81,289 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-          <p className="text-muted-foreground mt-4">Loading dashboard...</p>
+      <AppShell>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto"
+            />
+            <p className="text-muted-foreground mt-4">Loading dashboard...</p>
+          </div>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-md">
-                <span className="text-white font-bold text-lg">Z</span>
+    <AppShell>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border">
+          <div className="max-w-4xl mx-auto px-6 py-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-2xl font-bold text-foreground"
+                >
+                  {greeting}! ✨
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-muted-foreground mt-1"
+                >
+                  {today}
+                </motion.p>
               </div>
-            </Link>
-            <div>
-              <h1 className="text-xl font-semibold text-foreground">
-                Dashboard
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Your progress at a glance
-              </p>
+              <div className="lg:hidden">
+                <ThemeToggle />
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main content */}
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
-        {/* Today's Overview */}
-        <section>
-          <h2 className="text-lg font-semibold mb-4">Today&apos;s Overview</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              icon="📋"
-              label="Pending Tasks"
-              value={data?.todos.pending || 0}
-              href="/todos"
-            />
-            <StatCard
-              icon="✅"
-              label="Completed This Week"
-              value={data?.todos.completedThisWeek || 0}
-              href="/todos"
-            />
-            <StatCard
-              icon="🔥"
-              label="Habits Done Today"
-              value={`${data?.habits.completedToday || 0}/${
-                data?.habits.total || 0
-              }`}
-              href="/habits"
-            />
-            <StatCard
-              icon="📈"
-              label="Weekly Habit Rate"
-              value={`${data?.habits.weeklyCompletionRate || 0}%`}
-              href="/habits"
-            />
-          </div>
-        </section>
+        {/* Main content */}
+        <main className="max-w-4xl mx-auto px-6 py-6">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-6"
+          >
+            {/* Quick Actions */}
+            <motion.section variants={itemVariants}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <QuickAction
+                  href="/"
+                  icon={
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                  }
+                  label="Chat"
+                  color="bg-primary/10 text-primary hover:bg-primary/20"
+                />
+                <QuickAction
+                  href="/todos"
+                  icon={
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+                      <path d="M9 11l3 3L22 4" />
+                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                  }
+                  label="Tasks"
+                  badge={data?.todos.pending}
+                  color="bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
+                />
+                <QuickAction
+                  href="/habits"
+                  icon={
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                  }
+                  label="Habits"
+                  badge={`${data?.habits.completedToday || 0}/${data?.habits.total || 0}`}
+                  color="bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20"
+                />
+                <QuickAction
+                  href="/todos?category=__today__"
+                  icon={
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  }
+                  label="Today"
+                  color="bg-accent/10 text-accent hover:bg-accent/20"
+                />
+              </div>
+            </motion.section>
 
-        {/* Habit Streaks */}
-        {data?.habits.streaks && data.habits.streaks.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold mb-4">Habit Streaks</h2>
-            <div className="grid gap-3 md:grid-cols-2">
-              {data.habits.streaks.map((habit) => (
-                <Card key={habit.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            habit.completedToday
-                              ? "bg-green-100 text-green-600"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {habit.completedToday ? "✓" : "○"}
+            {/* Stats Overview */}
+            <motion.section variants={itemVariants}>
+              <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">Overview</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  value={data?.todos.pending || 0}
+                  label="Pending"
+                  icon="📋"
+                />
+                <StatCard
+                  value={data?.todos.completedThisWeek || 0}
+                  label="Done this week"
+                  icon="✅"
+                />
+                <StatCard
+                  value={`${data?.habits.weeklyCompletionRate || 0}%`}
+                  label="Habit rate"
+                  icon="📈"
+                />
+                <StatCard
+                  value={data?.landmarks.length || 0}
+                  label="Milestones"
+                  icon="🏆"
+                />
+              </div>
+            </motion.section>
+
+            {/* Habit Streaks */}
+            {data?.habits.streaks && data.habits.streaks.length > 0 && (
+              <motion.section variants={itemVariants}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Habits</h2>
+                  <Link href="/habits" className="text-xs text-primary hover:underline">View all</Link>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {data.habits.streaks.slice(0, 4).map((habit) => (
+                    <Card key={habit.id} className="overflow-hidden">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                                habit.completedToday
+                                  ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {habit.completedToday ? "✓" : "○"}
+                            </div>
+                            <span className="font-medium text-sm">{habit.name}</span>
+                          </div>
+                          {habit.streak > 0 && (
+                            <div className="flex items-center gap-1 text-orange-500">
+                              <span>🔥</span>
+                              <span className="font-bold text-sm">{habit.streak}</span>
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          <p className="font-medium">{habit.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {habit.completedToday
-                              ? "Completed today"
-                              : "Not yet done"}
-                          </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </motion.section>
+            )}
+
+            {/* Recent Landmarks */}
+            {data?.landmarks && data.landmarks.length > 0 && (
+              <motion.section variants={itemVariants}>
+                <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">Milestones</h2>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-border">
+                      {data.landmarks.slice(0, 3).map((landmark) => (
+                        <div key={landmark.id} className="p-3 flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-accent/20 to-accent/40 rounded-full flex items-center justify-center shrink-0">
+                            <span>🏆</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{landmark.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(landmark.date).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      {habit.streak > 0 && (
-                        <div className="flex items-center gap-1 text-orange-500">
-                          <span className="text-xl">🔥</span>
-                          <span className="font-bold text-lg">
-                            {habit.streak}
-                          </span>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          </section>
-        )}
+              </motion.section>
+            )}
 
-        {/* Recent Landmarks */}
-        {data?.landmarks && data.landmarks.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold mb-4">Life Landmarks</h2>
-            <Card>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {data.landmarks.map((landmark) => (
-                    <div
-                      key={landmark.id}
-                      className="p-4 flex items-start gap-3"
-                    >
-                      <div className="w-10 h-10 bg-gradient-to-br from-accent/20 to-accent/40 rounded-full flex items-center justify-center shrink-0">
-                        <span className="text-lg">🏆</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium">{landmark.title}</p>
-                        {landmark.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {landmark.notes}
-                          </p>
-                        )}
-                        <Badge variant="outline" className="mt-2 text-xs">
-                          {new Date(landmark.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+            {/* Empty state */}
+            {(!data || (data.todos.total === 0 && data.habits.total === 0 && data.landmarks.length === 0)) && (
+              <motion.div variants={itemVariants} className="text-center py-12">
+                <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <span className="text-white font-bold text-3xl">Z</span>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
-        )}
-
-        {/* Empty state */}
-        {(!data ||
-          (data.todos.total === 0 &&
-            data.habits.total === 0 &&
-            data.landmarks.length === 0)) && (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <span className="text-white font-bold text-3xl">Z</span>
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-3">
-              Welcome to Ziggy!
-            </h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Start chatting with Ziggy to add tasks, habits, and milestones.
-              Your progress will appear here.
-            </p>
-          </div>
-        )}
-      </main>
-
-      <BottomNav />
-    </div>
+                <h3 className="text-xl font-semibold text-foreground mb-3">
+                  Welcome to Ziggy!
+                </h3>
+                <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                  Start chatting with Ziggy to add tasks, habits, and milestones.
+                </p>
+                <Link href="/">
+                  <Button size="lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 mr-2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Start Chatting
+                  </Button>
+                </Link>
+              </motion.div>
+            )}
+          </motion.div>
+        </main>
+      </div>
+    </AppShell>
   );
 }
 
-function StatCard({
+function QuickAction({
+  href,
   icon,
   label,
-  value,
-  href,
+  badge,
+  color,
 }: {
-  icon: string;
-  label: string;
-  value: string | number;
   href: string;
+  icon: React.ReactNode;
+  label: string;
+  badge?: string | number;
+  color: string;
 }) {
   return (
     <Link href={href}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
-        <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="text-3xl">{icon}</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
+      <Card className={`h-full transition-all hover:shadow-md ${color} border-transparent`}>
+        <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
+          {icon}
+          <span className="font-medium text-sm">{label}</span>
+          {badge !== undefined && (
+            <Badge variant="secondary" className="text-xs">
+              {badge}
+            </Badge>
+          )}
         </CardContent>
       </Card>
     </Link>
   );
 }
 
-
+function StatCard({
+  value,
+  label,
+  icon,
+}: {
+  value: string | number;
+  label: string;
+  icon: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-2xl">{icon}</span>
+        </div>
+        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}

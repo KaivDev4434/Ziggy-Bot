@@ -8,9 +8,25 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const category = searchParams.get("category");
 
-    const where: Record<string, unknown> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: Record<string, any> = {};
     if (status) where.status = status;
-    if (category) where.category = category;
+    
+    // Handle special "__today__" filter
+    if (category === "__today__") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      where.status = "pending";
+      where.OR = [
+        { dueDate: { gte: today, lt: tomorrow } },
+        { doDate: { gte: today, lt: tomorrow } },
+      ];
+    } else if (category) {
+      where.category = category;
+    }
 
     const todos = await prisma.todo.findMany({
       where: Object.keys(where).length > 0 ? where : undefined,
