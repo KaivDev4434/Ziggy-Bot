@@ -61,19 +61,19 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const CATEGORY_DOT_COLORS: Record<string, string> = {
-  work: "bg-blue-500",
-  personal: "bg-purple-500",
-  chores: "bg-orange-500",
-  groceries: "bg-green-500",
-  finance: "bg-emerald-500",
-  health: "bg-pink-500",
-  projects: "bg-indigo-500",
-  errands: "bg-amber-500",
-  shopping: "bg-teal-500",
+  work: "bg-blue-500 dark:bg-blue-400",
+  personal: "bg-purple-500 dark:bg-purple-400",
+  chores: "bg-orange-500 dark:bg-orange-400",
+  groceries: "bg-green-500 dark:bg-green-400",
+  finance: "bg-emerald-500 dark:bg-emerald-400",
+  health: "bg-pink-500 dark:bg-pink-400",
+  projects: "bg-indigo-500 dark:bg-indigo-400",
+  errands: "bg-amber-500 dark:bg-amber-400",
+  shopping: "bg-teal-500 dark:bg-teal-400",
 };
 
-export const DEFAULT_CATEGORY_COLOR = "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
-export const DEFAULT_CATEGORY_DOT = "bg-gray-500";
+export const DEFAULT_CATEGORY_COLOR = "bg-muted text-muted-foreground border-border";
+export const DEFAULT_CATEGORY_DOT = "bg-muted-foreground/50";
 
 export function getCategoryColor(category: string | null | undefined): string {
   if (!category) return DEFAULT_CATEGORY_COLOR;

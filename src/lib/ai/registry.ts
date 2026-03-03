@@ -1,7 +1,7 @@
 // AI Provider Registry
 // Manages provider selection and fallback logic
 
-import type { AIProvider, ChatMessage, AIProviderOptions, AIProviderResponse } from "./types";
+import type { AIProvider, ChatMessage, AIProviderOptions, AIProviderResponse, StreamChunk } from "./types";
 import { PerplexityProvider } from "./providers/perplexity";
 import { AnthropicProvider } from "./providers/anthropic";
 import { OpenAIProvider } from "./providers/openai";
@@ -67,6 +67,27 @@ export async function chat(
 ): Promise<AIProviderResponse> {
   const provider = getProvider(options?.provider);
   return provider.chat(messages, options);
+}
+
+/**
+ * Stream a chat completion using the configured provider.
+ * Falls back to non-streaming if the provider doesn't support it.
+ */
+export async function* chatStream(
+  messages: ChatMessage[],
+  options?: AIProviderOptions & { provider?: ProviderName }
+): AsyncGenerator<StreamChunk, void, unknown> {
+  const provider = getProvider(options?.provider);
+  
+  // If provider supports streaming, use it
+  if (provider.chatStream && provider.supportsStreaming) {
+    yield* provider.chatStream(messages, options);
+    return;
+  }
+  
+  // Fallback: get full response and yield as single chunk
+  const response = await provider.chat(messages, options);
+  yield { content: response.content, done: true };
 }
 
 /**

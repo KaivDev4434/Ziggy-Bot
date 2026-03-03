@@ -19,41 +19,36 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
       className={cn(
-        "flex w-full mb-4",
+        "group flex w-full mb-2",
         isUser ? "justify-end" : "justify-start"
       )}
     >
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-4 py-3 shadow-sm",
+          "max-w-[85%] relative rounded-2xl px-4 py-2.5",
           isUser
-            ? "bg-primary text-primary-foreground rounded-br-md"
-            : "bg-card border border-border rounded-bl-md"
+            ? "bg-primary/90 text-primary-foreground rounded-br-lg"
+            : "bg-muted/40 border border-border/50 rounded-bl-lg"
         )}
       >
-        {!isUser && (
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xs">Z</span>
-            </div>
-            <span className="text-xs font-medium text-muted-foreground">
-              Ziggy
-            </span>
-          </div>
-        )}
-        <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", 
-          isUser ? "text-primary-foreground" : "text-foreground"
-        )}>
+        <p
+          className={cn(
+            "text-sm leading-relaxed whitespace-pre-wrap",
+            isUser ? "text-primary-foreground" : "text-foreground"
+          )}
+        >
           {message.content}
         </p>
         <p
           className={cn(
-            "text-xs mt-2",
-            isUser ? "text-primary-foreground/70" : "text-muted-foreground"
+            "text-[10px] mt-1 transition-opacity",
+            isUser
+              ? "text-primary-foreground/50 text-right"
+              : "text-muted-foreground/60 opacity-0 group-hover:opacity-100"
           )}
         >
           {new Date(message.createdAt).toLocaleTimeString([], {

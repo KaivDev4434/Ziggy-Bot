@@ -6,6 +6,7 @@ import { ChatCalendar } from "@/components/chat/ChatCalendar";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { toast } from "sonner";
 import { getEffectiveDate, isLateNightMode, toLocalDateString, isSameDay } from "@/lib/utils";
 import { getLocation, LocationInfo } from "@/lib/location";
 import { STORAGE_KEYS } from "@/lib/constants";
@@ -162,6 +163,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Failed to fetch messages:", error);
+      toast.error("Failed to load messages");
     }
   }, [selectedDate, messages.length]);
 
@@ -218,6 +220,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Failed to generate briefing:", error);
+      toast.error("Failed to generate briefing");
     } finally {
       setBriefingLoading(false);
     }
@@ -234,14 +237,16 @@ export default function Home() {
     async (content: string) => {
       if (isPastDate) return;
 
-      const userMessage: Message = {
-        id: `temp-${Date.now()}`,
+      // Add temporary user message while waiting for response
+      const tempUserMessage: Message = {
+        id: `temp-user-${Date.now()}`,
         role: "user",
         content,
         date: selectedDate,
         createdAt: new Date(),
       };
-      setMessages((prev) => [...prev, userMessage]);
+
+      setMessages((prev) => [...prev, tempUserMessage]);
       setIsLoading(true);
 
       try {
@@ -249,7 +254,7 @@ export default function Home() {
           message: content,
           date: toLocalDateString(selectedDate),
         };
-        
+
         // Include location for AI context
         if (locationRef.current) {
           chatBody.location = {
@@ -272,8 +277,9 @@ export default function Home() {
 
         const data = await response.json();
 
+        // Replace temp user message with persisted messages
         setMessages((prev) => {
-          const filtered = prev.filter((m) => m.id !== userMessage.id);
+          const filtered = prev.filter((m) => m.id !== tempUserMessage.id);
           return [...filtered, data.userMessage, data.assistantMessage];
         });
 
@@ -283,7 +289,11 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Failed to send message:", error);
-        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+        toast.error("Failed to send message");
+        // Remove temp message on error
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== tempUserMessage.id)
+        );
       } finally {
         setIsLoading(false);
       }
@@ -308,7 +318,7 @@ export default function Home() {
     <AppShell>
       <div className="h-screen flex flex-col">
         {/* Date selector header */}
-        <div className="bg-card border-b border-border px-4 py-2 flex items-center justify-between shrink-0">
+        <div className="px-4 py-2 flex items-center justify-between shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -377,8 +387,8 @@ export default function Home() {
 
         {/* Past date read-only banner */}
         {isPastDate && (
-          <div className="bg-muted/50 border-b border-border px-4 py-2 text-center">
-            <span className="text-sm text-muted-foreground">
+          <div className="px-4 py-1.5 text-center">
+            <span className="text-xs text-muted-foreground">
               Viewing past conversation (read-only)
             </span>
           </div>
@@ -386,9 +396,9 @@ export default function Home() {
 
         {/* Late night mode indicator */}
         {isLateNight && !isPastDate && (
-          <div className="bg-primary/10 border-b border-primary/20 px-4 py-1 text-center">
-            <span className="text-xs text-primary">
-              Late night mode - messages will be saved to today&apos;s chat
+          <div className="px-4 py-1 text-center">
+            <span className="text-xs text-primary/70">
+              Late night mode - messages saved to today&apos;s chat
             </span>
           </div>
         )}

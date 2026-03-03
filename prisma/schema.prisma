@@ -34,12 +34,16 @@ model Todo {
 }
 
 model Habit {
-  id        String        @id @default(cuid())
-  name      String
-  frequency String        @default("daily")
-  active    Boolean       @default(true)
-  createdAt DateTime      @default(now())
-  records   HabitRecord[]
+  id             String        @id @default(cuid())
+  name           String
+  frequency      String        @default("daily") // legacy compat: "daily", "weekly", "weekdays"
+  frequencyType  String        @default("every_day") // every_day, specific_days, times_per_week, times_per_month
+  frequencyDays  String?       // JSON array of day numbers (0=Sun, 1=Mon...6=Sat) for specific_days
+  frequencyTarget Int?         // target count for times_per_week or times_per_month
+  bestStreak     Int           @default(0)
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  records        HabitRecord[]
 }
 
 model HabitRecord {
@@ -69,4 +73,14 @@ model Memory {
 
   @@index([category])
   @@index([active])
+}
+
+model CalendarToken {
+  id           String   @id @default(cuid())
+  provider     String   @default("google") // google, outlook, etc.
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

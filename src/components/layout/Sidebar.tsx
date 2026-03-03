@@ -58,6 +58,26 @@ const navItems = [
     ),
   },
   {
+    href: "/notes",
+    label: "Notes",
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="w-5 h-5"
+      >
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M16 13H8" />
+        <path d="M16 17H8" />
+        <path d="M10 9H8" />
+      </svg>
+    ),
+  },
+  {
     href: "/dashboard",
     label: "Dashboard",
     icon: (
@@ -93,10 +113,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         initial={false}
         animate={{ width: isOpen ? 240 : 64 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
-        className="hidden lg:flex flex-col h-screen bg-card border-r border-border fixed left-0 top-0 z-40"
+        className="hidden lg:flex flex-col h-screen bg-card shadow-[1px_0_4px_rgba(0,0,0,0.03)] fixed left-0 top-0 z-40"
       >
         {/* Header */}
-        <div className="h-14 flex items-center justify-between px-3 border-b border-border">
+        <div className="h-14 flex items-center justify-between px-3">
           <AnimatePresence mode="wait">
             {isOpen && (
               <motion.div
@@ -141,10 +161,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                      "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all",
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                     )}
                   >
                     {item.icon}
@@ -169,7 +189,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-border">
+        <div className="p-3">
           <div className={cn("flex items-center", isOpen ? "justify-between" : "justify-center")}>
             <ThemeToggle />
             <AnimatePresence mode="wait">

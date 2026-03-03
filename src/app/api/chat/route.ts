@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { processMessage, buildAIContext } from "@/lib/ai";
 import { RECENT_MESSAGES_FOR_CONTEXT, HABIT_RECORDS_LOOKBACK } from "@/lib/constants";
-import { cleanCitations, isPastDate, parseLocalDate } from "@/lib/utils";
+import { cleanCitations, parseLocalDate, getEffectiveDate, toLocalDateString } from "@/lib/utils";
 import { processTodoAction } from "@/lib/services/todoService";
-import { processAndSaveMemories } from "@/lib/services/memoryService";
+import { processAndSaveMemories, buildMemoryContext } from "@/lib/services/memoryService";
+import { buildCalendarContext } from "@/lib/services/calendarService";
+import { getRecentNotesContext } from "@/lib/services/obsidianService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,8 +25,11 @@ export async function POST(request: NextRequest) {
       ? parseLocalDate(date.split("T")[0]) 
       : (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; })();
 
-    // Prevent sending messages to past days
-    if (isPastDate(messageDate)) {
+    // Prevent sending messages to past days (respect late-night mode: 12AM-4AM counts as previous day)
+    const effectiveToday = getEffectiveDate();
+    const messageDateStr = toLocalDateString(messageDate);
+    const effectiveTodayStr = toLocalDateString(effectiveToday);
+    if (messageDateStr < effectiveTodayStr) {
       return NextResponse.json(
         { error: "Cannot send messages to past days. Past conversations are read-only." },
         { status: 400 }
@@ -56,8 +61,8 @@ export async function POST(request: NextRequest) {
       take: RECENT_MESSAGES_FOR_CONTEXT,
     });
 
-    // Fetch current todos and habits for AI context
-    const [allTodos, allHabits] = await Promise.all([
+    // Fetch current todos, habits, calendar, and notes context for AI
+    const [allTodos, allHabits, memoryContext, calendarContext, notesContext] = await Promise.all([
       prisma.todo.findMany({
         select: {
           id: true,
@@ -78,6 +83,9 @@ export async function POST(request: NextRequest) {
           },
         },
       }),
+      buildMemoryContext(),
+      buildCalendarContext(),
+      getRecentNotesContext(),
     ]);
 
     // Build AI context with location if provided
@@ -93,14 +101,15 @@ export async function POST(request: NextRequest) {
       location // Pass location to AI context
     );
 
-    // Process with AI
+    // Process with AI, including memory, calendar, and notes context
     const aiResult = await processMessage(
       message,
       recentMessages.reverse().map((m) => ({
         role: m.role,
         content: m.content,
       })),
-      aiContext
+      aiContext,
+      memoryContext + calendarContext + notesContext
     );
 
     // Process extracted todos with actions

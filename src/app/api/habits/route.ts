@@ -34,16 +34,33 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, frequency } = body;
+    const { name, frequency, frequencyType, frequencyDays, frequencyTarget } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    // Determine the frequency type and legacy frequency string
+    const type = frequencyType || "every_day";
+    let legacyFrequency = frequency || "daily";
+    if (type === "specific_days") {
+      const days = frequencyDays || [];
+      const weekdaySet = [1, 2, 3, 4, 5];
+      const isWeekdays = days.length === 5 && weekdaySet.every((d: number) => days.includes(d));
+      legacyFrequency = isWeekdays ? "weekdays" : "custom";
+    } else if (type === "times_per_week") {
+      legacyFrequency = "weekly";
+    } else if (type === "times_per_month") {
+      legacyFrequency = "monthly";
+    }
+
     const habit = await prisma.habit.create({
       data: {
         name,
-        frequency: frequency || "daily",
+        frequency: legacyFrequency,
+        frequencyType: type,
+        frequencyDays: frequencyDays ? JSON.stringify(frequencyDays) : null,
+        frequencyTarget: frequencyTarget || null,
       },
     });
 
@@ -56,5 +73,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

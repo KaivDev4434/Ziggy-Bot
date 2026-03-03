@@ -7,7 +7,11 @@ import { AddTodo } from "@/components/todos/AddTodo";
 import { EditTodoModal } from "@/components/todos/EditTodoModal";
 import { AppShell } from "@/components/layout";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import Link from "next/link";
+import { toast } from "sonner";
 import { STORAGE_KEYS, getCategoryColor, getCategoryDotColor } from "@/lib/constants";
 import type { Todo, TodoStatus } from "@/types";
 
@@ -50,6 +54,7 @@ export default function TodosPage() {
       }
     } catch (error) {
       console.error("Failed to fetch todos:", error);
+      toast.error("Failed to load tasks");
     } finally {
       setIsLoading(false);
     }
@@ -71,6 +76,7 @@ export default function TodosPage() {
       }
     } catch (error) {
       console.error("Failed to add todo:", error);
+      toast.error("Failed to add task");
     }
   };
 
@@ -96,6 +102,7 @@ export default function TodosPage() {
       }
     } catch (error) {
       console.error("Failed to toggle todo:", error);
+      toast.error("Failed to update task");
     }
   };
 
@@ -106,9 +113,11 @@ export default function TodosPage() {
       });
       if (response.ok) {
         setTodos((prev) => prev.filter((t) => t.id !== id));
+        toast.success("Task deleted");
       }
     } catch (error) {
       console.error("Failed to delete todo:", error);
+      toast.error("Failed to delete task");
     }
   };
 
@@ -131,6 +140,7 @@ export default function TodosPage() {
       }
     } catch (error) {
       console.error("Failed to update todo:", error);
+      toast.error("Failed to update task");
     }
   };
 
@@ -290,40 +300,55 @@ export default function TodosPage() {
 
         {/* Todo list */}
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
-            <p className="text-muted-foreground mt-4">Loading tasks...</p>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-5 w-5 rounded mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <div className="flex gap-2 mt-2">
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : todos.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <EmptyState
+            icon={
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
-                className="w-8 h-8 text-muted-foreground"
+                className="w-8 h-8"
               >
                 <path d="M9 11l3 3L22 4" />
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
-            </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {statusFilter === "all" && !categoryFilter
+            }
+            title={
+              statusFilter === "all" && !categoryFilter
                 ? "No tasks yet"
                 : statusFilter === "pending"
                 ? "No pending tasks"
                 : statusFilter === "done"
                 ? "No completed tasks"
-                : `No tasks in "${categoryFilter}"`}
-            </h3>
-            <p className="text-muted-foreground">
-              {statusFilter === "all" && !categoryFilter
+                : `No tasks in "${categoryFilter}"`
+            }
+            description={
+              statusFilter === "all" && !categoryFilter
                 ? "Add a task above or chat with Ziggy to get started!"
-                : ""}
-            </p>
-          </div>
+                : undefined
+            }
+          />
         ) : (
           <div className="space-y-3">
             {todos

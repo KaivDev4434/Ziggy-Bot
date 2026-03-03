@@ -1,7 +1,7 @@
 // Anthropic (Claude) API Provider
 // Primary provider - supports tool calling natively
 
-import type { AIProvider, ChatMessage, AIProviderOptions, AIProviderResponse } from "../types";
+import type { AIProvider, ChatMessage, AIProviderOptions, AIProviderResponse, StreamChunk } from "../types";
 
 interface AnthropicAPIResponse {
   content: { type: string; text: string }[];
@@ -14,6 +14,7 @@ interface AnthropicAPIResponse {
 
 export class AnthropicProvider implements AIProvider {
   name = "anthropic";
+  supportsStreaming = true;
   private apiKey: string | undefined;
   private baseUrl = "https://api.anthropic.com/v1";
 
@@ -25,6 +26,17 @@ export class AnthropicProvider implements AIProvider {
     return !!this.apiKey;
   }
 
+  private prepareMessages(messages: ChatMessage[]) {
+    const systemMessage = messages.find((m) => m.role === "system");
+    const chatMessages = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+    return { systemMessage, chatMessages };
+  }
+
   async chat(
     messages: ChatMessage[],
     options?: AIProviderOptions
@@ -33,15 +45,7 @@ export class AnthropicProvider implements AIProvider {
       throw new Error("Anthropic API key not configured");
     }
 
-    // Anthropic API uses a different format: system prompt is separate
-    const systemMessage = messages.find((m) => m.role === "system");
-    const chatMessages = messages
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
-
+    const { systemMessage, chatMessages } = this.prepareMessages(messages);
     const model = options?.model ?? "claude-sonnet-4-20250514";
 
     const response = await fetch(`${this.baseUrl}/messages`, {
@@ -80,5 +84,84 @@ export class AnthropicProvider implements AIProvider {
           }
         : undefined,
     };
+  }
+
+  async *chatStream(
+    messages: ChatMessage[],
+    options?: AIProviderOptions
+  ): AsyncGenerator<StreamChunk, void, unknown> {
+    if (!this.apiKey) {
+      throw new Error("Anthropic API key not configured");
+    }
+
+    const { systemMessage, chatMessages } = this.prepareMessages(messages);
+    const model = options?.model ?? "claude-sonnet-4-20250514";
+
+    const response = await fetch(`${this.baseUrl}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: options?.maxTokens ?? 1500,
+        stream: true,
+        ...(systemMessage ? { system: systemMessage.content } : {}),
+        messages: chatMessages,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Anthropic API error: ${response.status} - ${errorBody}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No response body");
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
+            
+            try {
+              const parsed = JSON.parse(data);
+              
+              // Handle different Anthropic SSE event types
+              if (parsed.type === "content_block_delta") {
+                const delta = parsed.delta;
+                if (delta?.type === "text_delta" && delta?.text) {
+                  yield { content: delta.text, done: false };
+                }
+              } else if (parsed.type === "message_stop") {
+                yield { content: "", done: true };
+              }
+            } catch {
+              // Skip unparseable lines
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    yield { content: "", done: true };
   }
 }

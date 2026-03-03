@@ -10,58 +10,106 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 14% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 14% 10%;
+    /* Background & Surfaces - Warm whites, minimal contrast between layers */
+    --background: 40 33% 99%;
+    --foreground: 240 10% 15%;
+    --card: 40 20% 98.5%;
+    --card-foreground: 240 10% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 10%;
-    --primary: 217 91% 60%;
+    --popover-foreground: 240 10% 15%;
+
+    /* Primary - Indigo (slightly desaturated for calm) */
+    --primary: 243 65% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 220 14% 10%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 38 92% 50%;
+
+    /* Secondary - Warm gray */
+    --secondary: 40 12% 96%;
+    --secondary-foreground: 240 10% 15%;
+
+    /* Muted - Warm gray */
+    --muted: 40 12% 96%;
+    --muted-foreground: 240 5% 50%;
+
+    /* Accent - Warm amber */
+    --accent: 38 80% 52%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
+
+    /* Semantic: Success - Emerald */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    /* Semantic: Warning - Amber */
+    --warning: 38 80% 52%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Destructive - Rose */
+    --destructive: 0 72% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 60%;
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 76% 36%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --radius: 0.75rem;
+
+    /* Borders & Inputs - Very subtle */
+    --border: 40 10% 93%;
+    --input: 40 10% 93%;
+    --ring: 243 65% 58%;
+
+    /* Chart colors */
+    --chart-1: 243 65% 58%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 38 80% 52%;
+    --chart-4: 280 55% 60%;
+    --chart-5: 340 65% 55%;
+
+    /* Radius - Rounder, softer */
+    --radius: 1rem;
   }
-  
+
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
+    /* Background & Surfaces - Deep slate, minimal contrast between layers */
+    --background: 230 25% 9%;
+    --foreground: 40 10% 92%;
+    --card: 230 22% 11%;
+    --card-foreground: 40 10% 92%;
+    --popover: 230 25% 11%;
+    --popover-foreground: 40 10% 92%;
+
+    /* Primary - Indigo (softer for dark mode) */
+    --primary: 243 65% 65%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 38 92% 50%;
+
+    /* Secondary - Dark warm gray */
+    --secondary: 230 16% 16%;
+    --secondary-foreground: 40 10% 92%;
+
+    /* Muted - Dark warm gray */
+    --muted: 230 16% 15%;
+    --muted-foreground: 40 8% 55%;
+
+    /* Accent - Warm amber */
+    --accent: 38 80% 52%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 63% 31%;
+
+    /* Semantic: Success - Emerald */
+    --success: 160 65% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Semantic: Warning - Amber */
+    --warning: 38 80% 52%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Destructive - Rose (softer for dark mode) */
+    --destructive: 0 55% 48%;
     --destructive-foreground: 0 0% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+
+    /* Borders & Inputs - Very subtle */
+    --border: 230 15% 16%;
+    --input: 230 15% 18%;
+    --ring: 243 65% 65%;
+
+    /* Chart colors */
+    --chart-1: 243 60% 62%;
+    --chart-2: 160 55% 50%;
+    --chart-3: 38 75% 55%;
+    --chart-4: 280 55% 60%;
+    --chart-5: 340 65% 55%;
   }
 }
 

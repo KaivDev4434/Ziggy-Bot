@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
+import { MobileNav } from "./MobileNav";
 import { BottomNav } from "@/components/BottomNav";
 import { STORAGE_KEYS } from "@/lib/constants";
 
@@ -40,11 +41,14 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Mobile Header with Nav Drawer */}
+      <MobileNav />
+
       {/* Desktop Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={handleToggle} />
 
-      {/* Main Content */}
-      <main className="flex-1 min-h-screen lg:pb-0 pb-16">
+      {/* Main Content - add top padding on mobile for fixed header */}
+      <main className="flex-1 min-h-screen lg:pb-0 pb-16 pt-14 lg:pt-0">
         {children}
       </main>
 

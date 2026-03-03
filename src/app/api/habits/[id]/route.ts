@@ -41,12 +41,16 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, frequency, active } = body;
+    const { name, frequency, active, frequencyType, frequencyDays, frequencyTarget, bestStreak } = body;
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (frequency !== undefined) updateData.frequency = frequency;
     if (active !== undefined) updateData.active = active;
+    if (frequencyType !== undefined) updateData.frequencyType = frequencyType;
+    if (frequencyDays !== undefined) updateData.frequencyDays = frequencyDays ? JSON.stringify(frequencyDays) : null;
+    if (frequencyTarget !== undefined) updateData.frequencyTarget = frequencyTarget;
+    if (bestStreak !== undefined) updateData.bestStreak = bestStreak;
 
     const habit = await prisma.habit.update({
       where: { id },
@@ -70,7 +74,6 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    // Soft delete by setting active to false
     await prisma.habit.update({
       where: { id },
       data: { active: false },
@@ -85,5 +88,3 @@ export async function DELETE(
     );
   }
 }
-
-

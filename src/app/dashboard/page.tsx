@@ -5,9 +5,11 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AppShell } from "@/components/layout";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface DashboardData {
   todos: {
@@ -35,6 +37,18 @@ interface DashboardData {
   }[];
 }
 
+interface Suggestion {
+  id: string;
+  type: "overdue" | "streak-risk" | "pattern" | "reminder" | "achievement";
+  priority: "high" | "medium" | "low";
+  title: string;
+  description: string;
+  action?: {
+    label: string;
+    href?: string;
+  };
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -52,6 +66,7 @@ const itemVariants = {
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [greeting, setGreeting] = useState("Hello");
 
@@ -65,13 +80,23 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/dashboard");
-        if (response.ok) {
-          const dashboardData = await response.json();
+        const [dashboardRes, suggestionsRes] = await Promise.all([
+          fetch("/api/dashboard"),
+          fetch("/api/suggestions"),
+        ]);
+        
+        if (dashboardRes.ok) {
+          const dashboardData = await dashboardRes.json();
           setData(dashboardData);
+        }
+        
+        if (suggestionsRes.ok) {
+          const suggestionsData = await suggestionsRes.json();
+          setSuggestions(suggestionsData.suggestions || []);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard:", error);
+        toast.error("Failed to load dashboard data");
       } finally {
         setIsLoading(false);
       }
@@ -82,15 +107,57 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <AppShell>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto"
-            />
-            <p className="text-muted-foreground mt-4">Loading dashboard...</p>
-          </div>
+        <div className="min-h-screen bg-background">
+          {/* Header skeleton */}
+          <header className="bg-gradient-to-br from-primary/10 via-background to-accent/10 border-b border-border">
+            <div className="max-w-4xl mx-auto px-6 py-8">
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </header>
+          {/* Content skeleton */}
+          <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+            {/* Quick Actions skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="h-24">
+                  <CardContent className="p-4 flex flex-col items-center justify-center gap-2">
+                    <Skeleton className="h-6 w-6 rounded" />
+                    <Skeleton className="h-4 w-16" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            {/* Stats skeleton */}
+            <div>
+              <Skeleton className="h-4 w-24 mb-3" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <Skeleton className="h-6 w-6 mb-2" />
+                      <Skeleton className="h-8 w-16 mb-1" />
+                      <Skeleton className="h-3 w-20" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            {/* Habits skeleton */}
+            <div>
+              <Skeleton className="h-4 w-20 mb-3" />
+              <div className="grid gap-2 md:grid-cols-2">
+                {[...Array(2)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </main>
         </div>
       </AppShell>
     );
@@ -164,7 +231,7 @@ export default function DashboardPage() {
                   }
                   label="Tasks"
                   badge={data?.todos.pending}
-                  color="bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
+                  color="bg-primary/10 text-primary hover:bg-primary/20"
                 />
                 <QuickAction
                   href="/habits"
@@ -175,7 +242,7 @@ export default function DashboardPage() {
                   }
                   label="Habits"
                   badge={`${data?.habits.completedToday || 0}/${data?.habits.total || 0}`}
-                  color="bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20"
+                  color="bg-success/10 text-success hover:bg-success/20"
                 />
                 <QuickAction
                   href="/todos?category=__today__"
@@ -192,6 +259,58 @@ export default function DashboardPage() {
                 />
               </div>
             </motion.section>
+
+            {/* Ziggy Suggests */}
+            {suggestions.length > 0 && (
+              <motion.section variants={itemVariants}>
+                <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+                  ✨ Ziggy Suggests
+                </h2>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {suggestions.map((suggestion) => (
+                    <Card
+                      key={suggestion.id}
+                      className={`border-l-4 ${
+                        suggestion.priority === "high"
+                          ? "border-l-destructive"
+                          : suggestion.priority === "medium"
+                          ? "border-l-warning"
+                          : "border-l-success"
+                      }`}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm">
+                                {suggestion.type === "overdue" && "⚠️"}
+                                {suggestion.type === "streak-risk" && "🔥"}
+                                {suggestion.type === "reminder" && "⏰"}
+                                {suggestion.type === "achievement" && "🎉"}
+                                {suggestion.type === "pattern" && "📊"}
+                              </span>
+                              <span className="font-medium text-sm">
+                                {suggestion.title}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {suggestion.description}
+                            </p>
+                          </div>
+                          {suggestion.action?.href && (
+                            <Link href={suggestion.action.href}>
+                              <Button variant="outline" size="sm" className="shrink-0">
+                                {suggestion.action.label}
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </motion.section>
+            )}
 
             {/* Stats Overview */}
             <motion.section variants={itemVariants}>
@@ -236,7 +355,7 @@ export default function DashboardPage() {
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                                 habit.completedToday
-                                  ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+                                  ? "bg-success/10 text-success"
                                   : "bg-muted text-muted-foreground"
                               }`}
                             >
@@ -245,7 +364,7 @@ export default function DashboardPage() {
                             <span className="font-medium text-sm">{habit.name}</span>
                           </div>
                           {habit.streak > 0 && (
-                            <div className="flex items-center gap-1 text-orange-500">
+                            <div className="flex items-center gap-1 text-warning">
                               <span>🔥</span>
                               <span className="font-bold text-sm">{habit.streak}</span>
                             </div>

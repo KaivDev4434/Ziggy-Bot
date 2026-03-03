@@ -58,9 +58,9 @@ export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "group flex items-start gap-3 p-4 rounded-xl border bg-card transition-all hover:shadow-md",
-        isDone && "opacity-60",
-        isDoDateToday && !isDone && "ring-2 ring-primary/20"
+        "group flex items-start gap-3 p-4 rounded-2xl bg-card/60 transition-all hover:bg-card hover:shadow-sm",
+        isDone && "opacity-50",
+        isDoDateToday && !isDone && "ring-1 ring-primary/15 bg-primary/[0.02]"
       )}
     >
       <Checkbox
@@ -120,8 +120,8 @@ export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
               className={cn(
                 "text-xs",
                 isOverdue
-                  ? "bg-red-50 text-red-600 border-red-200"
-                  : "bg-blue-50 text-blue-600 border-blue-200"
+                  ? "bg-destructive/10 text-destructive border-destructive/20"
+                  : "bg-primary/10 text-primary border-primary/20"
               )}
             >
               Due: {formatDate(todo.dueDate)}
@@ -134,7 +134,7 @@ export function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
                 "text-xs",
                 isDoDateToday
                   ? "bg-primary/10 text-primary border-primary/20"
-                  : "bg-slate-50 text-slate-600 border-slate-200"
+                  : "bg-muted text-muted-foreground border-border"
               )}
             >
               Start: {formatDate(todo.doDate)}

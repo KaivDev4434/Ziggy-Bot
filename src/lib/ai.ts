@@ -15,7 +15,7 @@ interface Message {
   content: string;
 }
 
-function buildSystemPrompt(context?: AIContext, memoryContext?: string): string {
+export function buildSystemPrompt(context?: AIContext, memoryContext?: string): string {
   let contextSection = "";
   
   if (context) {
@@ -62,6 +62,13 @@ When users chat with you:
 2. Extract any tasks, habits, or life landmarks mentioned
 3. Be concise but friendly
 4. When the user mentions completing, updating, or deleting a task, match it to existing tasks by title
+5. ASK CLARIFYING QUESTIONS when a request is ambiguous or missing key details. For example:
+   - If user says "remind me about the meeting" but doesn't say when, ask what day/time
+   - If user says "add a task" but it's vague, ask for more specifics
+   - If a task could belong to multiple categories or has unclear priority, ask
+   - If something could be a task vs. a habit, confirm which they mean
+   - Keep clarifications brief and natural (one question at a time, not a list)
+   - When you ask a clarifying question, return empty arrays for todos/habits/landmarks until the user confirms
 
 Always respond with valid JSON in this exact format:
 {
@@ -106,13 +113,12 @@ OPTIONAL FIELDS (only include when clearly stated or implied):
 - "category": dynamically inferred from context. Common categories: "work", "personal", "chores", "groceries", "finance", "health", "projects", "errands", "shopping"
 - Only set fields that are clearly stated or strongly implied. Omit fields if not mentioned.
 
-DATE INTERPRETATION:
-- "today" = ${context?.currentDateTime?.split(",")[0] || "current date"}
-- "tomorrow" = next day
-- "this Friday" = upcoming Friday
-- "next week" = 7 days from now
+DATE INTERPRETATION (use these exact dates in your responses and for scheduling):
+- Today is: ${context?.currentDateTime || "unknown"}
+- Tomorrow is: ${context ? (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }); })() : "next day"}
+- Use YYYY-MM-DD format for doDate and dueDate fields
 - "by Monday" = deadline is Monday (dueDate)
-- "starting Monday" = begin on Monday (doDate)
+- "starting Monday" / "tomorrow morning" = begin on that day (doDate)
 
 GENERAL RULES:
 - Extract actionable tasks (things to do, calls to make, items to buy)
@@ -120,20 +126,61 @@ GENERAL RULES:
 - Recognize life landmarks (birthdays, anniversaries, achievements)
 - If no clear items found, return empty arrays
 - Keep your response warm and personable
-- Reference the user's pending tasks and habits in your response when relevant`;
+- Reference the user's pending tasks and habits in your response when relevant
+- Prefer asking a quick clarifying question over making assumptions about ambiguous requests
+- If user's intent is clear, act immediately without asking -- only ask when genuinely ambiguous`;
+}
+
+/**
+ * Extract structured information from raw AI response text.
+ * Used by the streaming endpoint to process the full response after streaming completes.
+ */
+export function extractInformationFromResponse(content: string): AIExtractions {
+  try {
+    let jsonContent = content;
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonContent = jsonMatch[1].trim();
+    }
+
+    const parsed = JSON.parse(jsonContent);
+
+    const normalizedTodos = (parsed.todos || []).map((todo: ExtractedTodo) => ({
+      ...todo,
+      action: todo.action || "create",
+    }));
+
+    return {
+      todos: normalizedTodos,
+      habits: parsed.habits || [],
+      landmarks: parsed.landmarks || [],
+      conversationalResponse: parsed.response || "I understood your message!",
+    };
+  } catch {
+    // If parsing fails, treat the whole content as conversational response
+    return {
+      todos: [],
+      habits: [],
+      landmarks: [],
+      conversationalResponse: content,
+    };
+  }
 }
 
 export async function processMessage(
   userMessage: string,
   recentMessages: { role: string; content: string }[],
-  context?: AIContext
+  context?: AIContext,
+  additionalContext?: string
 ): Promise<AIExtractions> {
-  // Load persistent memories to inject into context
-  let memoryContext = "";
-  try {
-    memoryContext = await buildMemoryContext();
-  } catch (error) {
-    console.error("Failed to load memories:", error);
+  // Load persistent memories to inject into context (if not provided)
+  let memoryContext = additionalContext || "";
+  if (!additionalContext) {
+    try {
+      memoryContext = await buildMemoryContext();
+    } catch (error) {
+      console.error("Failed to load memories:", error);
+    }
   }
 
   // Filter recent messages to ensure proper alternation (user/assistant/user/assistant...)

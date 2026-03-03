@@ -10,6 +10,7 @@ export interface AIProviderOptions {
   maxTokens?: number;
   temperature?: number;
   systemPrompt?: string;
+  stream?: boolean;
 }
 
 export interface AIProviderResponse {
@@ -20,6 +21,11 @@ export interface AIProviderResponse {
     completionTokens?: number;
     totalTokens?: number;
   };
+}
+
+export interface StreamChunk {
+  content: string;
+  done: boolean;
 }
 
 /**
@@ -39,7 +45,20 @@ export interface AIProvider {
   ): Promise<AIProviderResponse>;
 
   /**
+   * Stream a chat completion. Returns an async iterator that yields chunks.
+   */
+  chatStream?(
+    messages: ChatMessage[],
+    options?: AIProviderOptions
+  ): AsyncGenerator<StreamChunk, void, unknown>;
+
+  /**
    * Check if the provider is properly configured (has API key, etc.)
    */
   isConfigured(): boolean;
+
+  /**
+   * Whether this provider supports streaming
+   */
+  supportsStreaming?: boolean;
 }

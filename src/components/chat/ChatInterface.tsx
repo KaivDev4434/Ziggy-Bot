@@ -16,7 +16,7 @@ interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
   isLoading: boolean;
-  disabled?: boolean; // For read-only mode (past dates)
+  disabled?: boolean;
 }
 
 export function ChatInterface({
@@ -27,31 +27,15 @@ export function ChatInterface({
 }: ChatInterfaceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="bg-card border-b border-border px-6 py-4 shrink-0">
-        <div className="flex items-center gap-3 max-w-4xl mx-auto">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-md">
-            <span className="text-white font-bold text-lg">Z</span>
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Ziggy</h1>
-            <p className="text-sm text-muted-foreground">
-              Your AI Assistant
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Messages Area */}
       <ScrollArea className="flex-1">
-        <div className="p-6 max-w-4xl mx-auto">
+        <div className="px-6 py-8 max-w-3xl mx-auto">
           {messages.length === 0 ? (
             <WelcomeScreen />
           ) : (
@@ -74,82 +58,43 @@ export function ChatInterface({
 
 function WelcomeScreen() {
   return (
-    <div className="text-center py-12">
-      <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-        <span className="text-white font-bold text-3xl">Z</span>
+    <div className="text-center py-20">
+      <div className="w-16 h-16 bg-gradient-to-br from-primary/80 to-primary/40 rounded-full flex items-center justify-center mx-auto mb-6">
+        <span className="text-white font-semibold text-2xl">Z</span>
       </div>
-      <h3 className="text-2xl font-semibold text-foreground mb-3">
-        Welcome to Ziggy!
+      <h3 className="text-xl font-medium text-foreground mb-2">
+        Hi, I&apos;m Ziggy
       </h3>
-      <p className="text-muted-foreground max-w-md mx-auto leading-relaxed mb-8">
-        I&apos;m your personal AI assistant. Tell me about your tasks, goals, or
-        anything on your mind, and I&apos;ll help you stay organized.
+      <p className="text-muted-foreground max-w-sm mx-auto leading-relaxed mb-10 text-sm">
+        Your personal assistant. Tell me about your day, tasks, or anything on your mind.
       </p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg mx-auto">
-        <ExampleCard
-          icon="📝"
-          title="Track Tasks"
-          example="I need to call the doctor and buy groceries"
-        />
-        <ExampleCard
-          icon="🎯"
-          title="Set Goals"
-          example="Remind me to review the project by Friday"
-        />
-        <ExampleCard
-          icon="🔄"
-          title="Build Habits"
-          example="I want to start meditating daily"
-        />
-        <ExampleCard
-          icon="🏆"
-          title="Mark Milestones"
-          example="I got promoted at work today!"
-        />
+      <div className="max-w-md mx-auto space-y-3">
+        <SuggestionRow text="I need to call the doctor and buy groceries" />
+        <SuggestionRow text="Remind me to review the project by Friday" />
+        <SuggestionRow text="I want to start meditating daily" />
       </div>
     </div>
   );
 }
 
-function ExampleCard({
-  icon,
-  title,
-  example,
-}: {
-  icon: string;
-  title: string;
-  example: string;
-}) {
+function SuggestionRow({ text }: { text: string }) {
   return (
-    <div className="bg-card p-4 rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
-      <h4 className="font-medium text-foreground mb-1">
-        {icon} {title}
-      </h4>
-      <p className="text-sm text-muted-foreground">&quot;{example}&quot;</p>
+    <div className="text-sm text-muted-foreground/70 py-2 px-4 rounded-xl hover:bg-muted/50 transition-colors cursor-default">
+      &ldquo;{text}&rdquo;
     </div>
   );
 }
 
 function TypingIndicator() {
   return (
-    <div className="flex justify-start mb-4">
-      <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-xs">Z</span>
-          </div>
-          <span className="text-xs font-medium text-muted-foreground">
-            Ziggy
-          </span>
-        </div>
-        <div className="flex gap-1">
-          <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
-          <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
-          <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" />
+    <div className="flex justify-start mb-2">
+      <div className="px-2 py-3">
+        <div className="flex gap-1.5">
+          <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+          <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+          <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" />
         </div>
       </div>
     </div>
   );
 }
-
-

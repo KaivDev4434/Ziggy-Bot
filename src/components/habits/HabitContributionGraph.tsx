@@ -150,7 +150,7 @@ export function HabitContributionGraph({
                       day.future
                         ? "bg-transparent"
                         : day.completed
-                        ? "bg-green-500"
+                        ? "bg-success"
                         : "bg-muted",
                       isToday && "ring-1 ring-primary ring-offset-1 ring-offset-background"
                     )}
@@ -168,8 +168,8 @@ export function HabitContributionGraph({
           <span>Less</span>
           <div className="flex gap-[2px]">
             <div className="w-[10px] h-[10px] rounded-[2px] bg-muted" />
-            <div className="w-[10px] h-[10px] rounded-[2px] bg-green-300" />
-            <div className="w-[10px] h-[10px] rounded-[2px] bg-green-500" />
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-success/50" />
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-success" />
           </div>
           <span>More</span>
         </div>
