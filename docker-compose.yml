@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # Ziggy Next.js App
+  ziggy:
+    build: .
+    container_name: ziggy-app
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    volumes:
+      - ziggy-data:/app/prisma
+    env_file:
+      - .env.production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Cloudflare Tunnel for ziggy.kaivalya.dev
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: ziggy-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - ziggy
+
+volumes:
+  ziggy-data:
+    driver: local

@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.local
+.env.production
+prisma/ziggy.db
+*.md
+.DS_Store
+.cursor
+.vscode
+docs
