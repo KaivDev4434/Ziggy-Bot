@@ -148,7 +148,6 @@ export default function MediaPage() {
 
   // Stats by type
   const countByType = (type: string) => items.filter((i) => i.type === type).length;
-  const totalItems = items.length;
 
   return (
     <AppShell>

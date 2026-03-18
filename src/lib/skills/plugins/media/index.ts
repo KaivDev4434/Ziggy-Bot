@@ -67,7 +67,7 @@ Only add "media" when a specific title is mentioned. Omit if not mentioned.`;
 
   async processExtractions(
     data: unknown,
-    ctx: ProcessingContext
+    _ctx: ProcessingContext  // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<SkillExtractionResult> {
     if (!Array.isArray(data) || data.length === 0) return { processed: 0 };
 

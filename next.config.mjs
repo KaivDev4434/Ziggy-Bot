@@ -10,6 +10,7 @@ const pwaConfig = withPWA({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  serverExternalPackages: ["node-cron", "bcryptjs"],
 };
 
 export default pwaConfig(nextConfig);

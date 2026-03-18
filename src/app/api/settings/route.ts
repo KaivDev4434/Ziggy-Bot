@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/guard";
-import { hashPassword, verifyPassword, getPasswordHash, setConfig, getConfig } from "@/lib/auth";
+import { hashPassword, verifyPassword, getPasswordHash, setConfig } from "@/lib/auth";
 import { invalidateConfigCache } from "@/lib/configLoader";
 import prisma from "@/lib/db";
 

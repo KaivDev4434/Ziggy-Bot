@@ -8,7 +8,7 @@ RUN npm ci --omit=dev
 
 # Copy source
 COPY tsconfig.json ./
-COPY src/worker ./src/worker
+COPY src/scheduler ./src/scheduler
 COPY src/lib/telegram ./src/lib/telegram
 
 # Compile TypeScript
@@ -16,4 +16,4 @@ RUN npx tsc --project tsconfig.json --outDir dist --module commonjs --moduleReso
     --noEmit false || true
 
 # Run compiled worker
-CMD ["node", "dist/src/worker/index.js"]
+CMD ["node", "dist/src/scheduler/index.js"]

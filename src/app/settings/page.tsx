@@ -809,7 +809,7 @@ export default function SettingsPage() {
             {/* New token reveal */}
             {createdToken && (
               <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 space-y-2">
-                <p className="text-sm font-medium text-green-800 dark:text-green-300">Token created — copy it now, it won't be shown again:</p>
+                <p className="text-sm font-medium text-green-800 dark:text-green-300">Token created — copy it now, it won&apos;t be shown again:</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">{createdToken}</code>
                   <button

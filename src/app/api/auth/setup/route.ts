@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
   hashPassword,
-  setConfig,
   isSetupComplete,
   createSessionToken,
   SESSION_COOKIE,
