@@ -11,16 +11,19 @@ interface OllamaAPIResponse {
 
 export class OllamaProvider implements AIProvider {
   name = "ollama";
-  private baseUrl: string;
-  private defaultModel: string;
 
-  constructor() {
-    this.baseUrl = process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-    this.defaultModel = process.env.OLLAMA_MODEL ?? "llama3.1";
+  private get baseUrl(): string {
+    return process.env.OLLAMA_BASE_URL ?? "http://localhost:11434";
+  }
+
+  private get defaultModel(): string {
+    return process.env.OLLAMA_MODEL ?? "llama3.1";
   }
 
   isConfigured(): boolean {
-    return !!this.baseUrl;
+    // Only considered configured if explicitly set — avoids being picked as
+    // an accidental fallback when no other provider is ready yet.
+    return !!process.env.OLLAMA_BASE_URL;
   }
 
   async chat(

@@ -20,10 +20,9 @@ interface PerplexityAPIResponse {
 
 export class PerplexityProvider implements AIProvider {
   name = "perplexity";
-  private apiKey: string | undefined;
 
-  constructor() {
-    this.apiKey = process.env.PERPLEXITY_API_KEY;
+  private get apiKey(): string | undefined {
+    return process.env.PERPLEXITY_API_KEY;
   }
 
   isConfigured(): boolean {

@@ -16,12 +16,13 @@ interface OpenAIAPIResponse {
 
 export class OpenAIProvider implements AIProvider {
   name = "openai";
-  private apiKey: string | undefined;
-  private baseUrl: string;
 
-  constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY;
-    this.baseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
+  private get apiKey(): string | undefined {
+    return process.env.OPENAI_API_KEY;
+  }
+
+  private get baseUrl(): string {
+    return process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
   }
 
   isConfigured(): boolean {

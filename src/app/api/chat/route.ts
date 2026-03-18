@@ -7,8 +7,20 @@ import { processTodoAction } from "@/lib/services/todoService";
 import { processAndSaveMemories, buildMemoryContext } from "@/lib/services/memoryService";
 import { buildCalendarContext } from "@/lib/services/calendarService";
 import { getRecentNotesContext } from "@/lib/services/obsidianService";
+import { requireAuth } from "@/lib/auth/guard";
+import { loadConfig } from "@/lib/configLoader";
+import { skillRegistry } from "@/lib/skills/registry";
+import { buildShortTermContext } from "@/lib/services/shortTermContext";
+import type { PersonalityConfig } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  const auth = await requireAuth(request);
+  if (!auth.authenticated) return auth.response;
+
+  // Load user-configured AI keys from DB into process.env (no-op if already loaded)
+  await loadConfig();
+
   try {
     const { message, date, location } = await request.json();
 
@@ -61,8 +73,8 @@ export async function POST(request: NextRequest) {
       take: RECENT_MESSAGES_FOR_CONTEXT,
     });
 
-    // Fetch current todos, habits, calendar, and notes context for AI
-    const [allTodos, allHabits, memoryContext, calendarContext, notesContext] = await Promise.all([
+    // Fetch current todos, habits, calendar, notes, and skill contexts for AI
+    const [allTodos, allHabits, memoryContext, calendarContext, notesContext, skillContext, shortTermCtx] = await Promise.all([
       prisma.todo.findMany({
         select: {
           id: true,
@@ -86,6 +98,8 @@ export async function POST(request: NextRequest) {
       buildMemoryContext(),
       buildCalendarContext(),
       getRecentNotesContext(),
+      skillRegistry.buildAdditionalContext(),
+      buildShortTermContext(),
     ]);
 
     // Build AI context with location if provided
@@ -101,6 +115,14 @@ export async function POST(request: NextRequest) {
       location // Pass location to AI context
     );
 
+    // Load personality config (already in process.env via loadConfig)
+    const personality: PersonalityConfig = {
+      displayName: process.env.ZIGGY_DISPLAY_NAME || undefined,
+      tone: (process.env.ZIGGY_PERSONALITY_TONE as PersonalityConfig["tone"]) || "warm",
+      brevity: (process.env.ZIGGY_PERSONALITY_BREVITY as PersonalityConfig["brevity"]) || "balanced",
+      userBio: process.env.ZIGGY_USER_BIO || undefined,
+    };
+
     // Process with AI, including memory, calendar, and notes context
     const aiResult = await processMessage(
       message,
@@ -109,7 +131,8 @@ export async function POST(request: NextRequest) {
         content: m.content,
       })),
       aiContext,
-      memoryContext + calendarContext + notesContext
+      shortTermCtx + memoryContext + calendarContext + notesContext + skillContext,
+      personality
     );
 
     // Process extracted todos with actions
@@ -172,6 +195,12 @@ export async function POST(request: NextRequest) {
         })),
       });
     }
+
+    // Dispatch extractions to registered skill plugins (Phase 2+ skills)
+    skillRegistry.processAllExtractions(
+      aiResult.skillData,
+      { messageDate }
+    ).catch((err) => console.error("Skill extraction error:", err));
 
     // Clean citations from AI response and save assistant message
     const cleanedResponse = cleanCitations(aiResult.conversationalResponse);

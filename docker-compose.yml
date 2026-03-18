@@ -26,6 +26,22 @@ services:
     depends_on:
       - ziggy
 
+  # ── Phase 3: Scheduler + Telegram Bot ──────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ziggy-worker
+    restart: unless-stopped
+    environment:
+      - ZIGGY_APP_URL=http://ziggy:3000
+      - SCHEDULER_API_TOKEN=${SCHEDULER_API_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TZ=Asia/Kolkata
+    depends_on:
+      - ziggy
+
 volumes:
   ziggy-data:
     driver: local

@@ -84,3 +84,122 @@ model CalendarToken {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// ─── Phase 2: Skill Models ────────────────────────────────────────────────────
+
+model MoodEntry {
+  id        String   @id @default(cuid())
+  energy    Int?     // 1-10
+  mood      Int?     // 1-10
+  notes     String?
+  tags      String?  // JSON-encoded string array e.g. '["stressed","productive"]'
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  amount      Float
+  type        String   // "expense" | "income"
+  category    String
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+  @@index([category])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  category  String   @unique
+  amount    Float
+  period    String   @default("monthly") // "weekly" | "monthly"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Person {
+  id           String        @id @default(cuid())
+  name         String
+  relationship String?       // "friend" | "family" | "colleague" | "other"
+  notes        String?
+  birthday     DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  interactions Interaction[]
+}
+
+model Interaction {
+  id        String    @id @default(cuid())
+  personId  String
+  summary   String
+  followUp  String?
+  dueDate   DateTime?
+  date      DateTime  @default(now())
+  person    Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+}
+
+model MediaItem {
+  id        String   @id @default(cuid())
+  title     String
+  type      String   // "book" | "movie" | "series"
+  status    String   @default("want") // "want" | "in_progress" | "done"
+  rating    Int?     // 1-5, when done
+  notes     String?
+  author    String?  // books
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status])
+}
+
+// ─── Phase 1: Auth & Config ───────────────────────────────────────────────────
+
+// Key-value store for user settings and runtime configuration.
+// Used by onboarding to store: display_name, timezone, password_hash, jwt_secret,
+// ai_provider, *_api_key, telegram_bot_token, telegram_chat_id, onboarding_complete,
+// briefing_time, notification_* preferences.
+model AppConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Bearer tokens for API clients (Telegram bot, future mobile app, scripts).
+// Tokens are stored as SHA-256 hashes — the raw token is shown once on creation.
+model ApiToken {
+  id         String    @id @default(cuid())
+  name       String    // "telegram-bot", "mobile-app", "cli"
+  tokenHash  String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  active     Boolean   @default(true)
+}
+
+// Rolling 7-day narrative memory. One row per day, AI-generated summary of
+// that day's conversation. Injected into the AI prompt as "RECENT WEEK" context.
+// The nightly scheduler job creates/updates these. Rows older than 7 days are pruned.
+model ShortTermContext {
+  id        String   @id @default(cuid())
+  date      DateTime @unique // date only (no time component)
+  summary   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+// AI-generated weekly review report, persisted for display in dashboard
+model WeeklySummary {
+  id        String   @id @default(cuid())
+  weekStart DateTime @unique // Monday of that week (date only)
+  report    String           // AI-generated HTML summary
+  createdAt DateTime @default(now())
+
+  @@index([weekStart])
+}

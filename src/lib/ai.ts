@@ -15,11 +15,53 @@ interface Message {
   content: string;
 }
 
-export function buildSystemPrompt(context?: AIContext, memoryContext?: string): string {
+export interface PersonalityConfig {
+  displayName?: string;
+  tone?: "warm" | "professional" | "witty";
+  brevity?: "concise" | "balanced" | "thorough";
+  userBio?: string;
+}
+
+function buildPersonalitySection(p: PersonalityConfig): string {
+  const name = p.displayName?.trim();
+  const tone = p.tone ?? "warm";
+  const brevity = p.brevity ?? "balanced";
+
+  const toneInstructions = {
+    warm:         "Be warm, caring and encouraging. Celebrate wins, offer gentle nudges when things slip, and use a conversational, friendly tone — like a trusted friend who has their life together.",
+    professional: "Be professional, precise, and efficient. Skip pleasantries unless the user shares something personal. Keep responses structured and to the point.",
+    witty:        "Be warm but also playful and witty. A touch of dry humor is welcome. Keep it light without sacrificing usefulness. Think — clever friend, not stand-up comedian.",
+  };
+
+  const brevityInstructions = {
+    concise:   "Keep responses SHORT. One to three sentences max unless detail is truly needed. The user values speed over depth.",
+    balanced:  "Match the depth of your response to the complexity of the request. Don't pad, don't truncate important context.",
+    thorough:  "The user appreciates thorough, detailed responses. Explain your reasoning, surface related things they might not have thought of, give context.",
+  };
+
+  const lines: string[] = [];
+
+  if (name) {
+    lines.push(`The user's name is ${name}. Use it occasionally in responses — naturally, not every message. When greeting or acknowledging something personal, use their name.`);
+  }
+
+  lines.push(`TONE: ${toneInstructions[tone]}`);
+  lines.push(`RESPONSE LENGTH: ${brevityInstructions[brevity]}`);
+
+  if (p.userBio?.trim()) {
+    lines.push(`ABOUT THE USER: ${p.userBio.trim()}`);
+  }
+
+  return lines.join("\n");
+}
+
+export function buildSystemPrompt(context?: AIContext, memoryContext?: string, personality?: PersonalityConfig): string {
+  const personalitySection = personality ? buildPersonalitySection(personality) : "";
+
   let contextSection = "";
-  
+
   if (context) {
-    const locationInfo = context.location 
+    const locationInfo = context.location
       ? `- User's location: ${context.location.city ? `${context.location.city}, ` : ""}${context.location.country || "Unknown"}${context.location.lat ? ` (${context.location.lat.toFixed(2)}°, ${context.location.lon?.toFixed(2)}°)` : ""}`
       : "- User's location: Not available";
 
@@ -33,41 +75,38 @@ ${locationInfo}
 IMPORTANT: When the user asks about time, date, or location, USE THE ABOVE INFORMATION. Do not say you cannot access their location or time - you have it!
 
 PENDING TASKS (${context.pendingTodos.length} total):
-${context.pendingTodos.length > 0 
-  ? context.pendingTodos.map(t => 
+${context.pendingTodos.length > 0
+  ? context.pendingTodos.map(t =>
       `- [ID: ${t.id}] "${t.title}"${t.category ? ` (${t.category})` : ""}${t.dueDate ? ` due: ${t.dueDate}` : ""}${t.priority ? ` priority: ${t.priority}` : ""}`
     ).join("\n")
   : "- No pending tasks"}
 
 TODAY'S HABITS:
 ${context.todayHabits.length > 0
-  ? context.todayHabits.map(h => 
+  ? context.todayHabits.map(h =>
       `- ${h.name}: ${h.completedToday ? "✓ Done" : "○ Not done"}${h.streak > 0 ? ` (${h.streak} day streak)` : ""}`
     ).join("\n")
   : "- No habits tracked yet"}
 
 UPCOMING DEADLINES (this week):
 ${context.upcomingDeadlines.length > 0
-  ? context.upcomingDeadlines.map(d => 
+  ? context.upcomingDeadlines.map(d =>
       `- "${d.title}" due ${d.dueDate} (${d.daysLeft} days left)`
     ).join("\n")
   : "- No upcoming deadlines"}
 `;
   }
 
-  return `You are Ziggy, a warm and friendly personal AI assistant. You help users organize their lives by understanding their messages and extracting actionable items.
-${contextSection}${memoryContext || ""}
+  return `You are Ziggy, a personal AI assistant.
+${personalitySection ? `\nPERSONALITY & STYLE:\n${personalitySection}\n` : ""}${contextSection}${memoryContext || ""}
 When users chat with you:
-1. Respond conversationally in a helpful, encouraging tone
+1. Respond conversationally — always match the tone defined above
 2. Extract any tasks, habits, or life landmarks mentioned
-3. Be concise but friendly
-4. When the user mentions completing, updating, or deleting a task, match it to existing tasks by title
-5. ASK CLARIFYING QUESTIONS when a request is ambiguous or missing key details. For example:
+3. When the user mentions completing, updating, or deleting a task, match it to existing tasks by title
+4. ASK CLARIFYING QUESTIONS when a request is ambiguous or missing key details. For example:
    - If user says "remind me about the meeting" but doesn't say when, ask what day/time
-   - If user says "add a task" but it's vague, ask for more specifics
-   - If a task could belong to multiple categories or has unclear priority, ask
    - If something could be a task vs. a habit, confirm which they mean
-   - Keep clarifications brief and natural (one question at a time, not a list)
+   - Keep clarifications brief and natural (one question at a time)
    - When you ask a clarifying question, return empty arrays for todos/habits/landmarks until the user confirms
 
 Always respond with valid JSON in this exact format:
@@ -155,6 +194,7 @@ export function extractInformationFromResponse(content: string): AIExtractions {
       habits: parsed.habits || [],
       landmarks: parsed.landmarks || [],
       conversationalResponse: parsed.response || "I understood your message!",
+      skillData: parsed,
     };
   } catch {
     // If parsing fails, treat the whole content as conversational response
@@ -163,6 +203,7 @@ export function extractInformationFromResponse(content: string): AIExtractions {
       habits: [],
       landmarks: [],
       conversationalResponse: content,
+      skillData: {},
     };
   }
 }
@@ -171,7 +212,8 @@ export async function processMessage(
   userMessage: string,
   recentMessages: { role: string; content: string }[],
   context?: AIContext,
-  additionalContext?: string
+  additionalContext?: string,
+  personality?: PersonalityConfig
 ): Promise<AIExtractions> {
   // Load persistent memories to inject into context (if not provided)
   let memoryContext = additionalContext || "";
@@ -205,7 +247,7 @@ export async function processMessage(
     filteredMessages.pop();
   }
 
-  const systemPrompt = buildSystemPrompt(context, memoryContext);
+  const systemPrompt = buildSystemPrompt(context, memoryContext, personality);
 
   const messages: Message[] = [
     { role: "system", content: systemPrompt },
@@ -227,17 +269,18 @@ export async function processMessage(
       }
       
       const parsed = JSON.parse(jsonContent);
-      
+
       const normalizedTodos = (parsed.todos || []).map((todo: ExtractedTodo) => ({
         ...todo,
         action: todo.action || "create",
       }));
-      
+
       return {
         todos: normalizedTodos,
         habits: parsed.habits || [],
         landmarks: parsed.landmarks || [],
         conversationalResponse: parsed.response || "I understood your message!",
+        skillData: parsed, // preserve full parsed object for skill plugins
       };
     } catch {
       return {
@@ -245,6 +288,7 @@ export async function processMessage(
         habits: [],
         landmarks: [],
         conversationalResponse: content,
+        skillData: {},
       };
     }
   } catch (error) {
@@ -254,6 +298,7 @@ export async function processMessage(
       habits: [],
       landmarks: [],
       conversationalResponse: "I had trouble processing that. Could you try again?",
+      skillData: {},
     };
   }
 }

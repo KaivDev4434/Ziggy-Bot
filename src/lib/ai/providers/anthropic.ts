@@ -15,11 +15,10 @@ interface AnthropicAPIResponse {
 export class AnthropicProvider implements AIProvider {
   name = "anthropic";
   supportsStreaming = true;
-  private apiKey: string | undefined;
   private baseUrl = "https://api.anthropic.com/v1";
 
-  constructor() {
-    this.apiKey = process.env.ANTHROPIC_API_KEY;
+  private get apiKey(): string | undefined {
+    return process.env.ANTHROPIC_API_KEY;
   }
 
   isConfigured(): boolean {

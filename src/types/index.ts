@@ -169,6 +169,8 @@ export interface AIExtractions {
   habits: ExtractedHabit[];
   landmarks: ExtractedLandmark[];
   conversationalResponse: string;
+  /** Full raw parsed JSON from AI — carries skill-specific fields (transactions, moodEntry, etc.) */
+  skillData: Record<string, unknown>;
 }
 
 // --- AI Context ---
