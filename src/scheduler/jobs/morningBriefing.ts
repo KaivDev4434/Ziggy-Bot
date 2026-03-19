@@ -19,7 +19,8 @@ export async function morningBriefingJob(
       return;
     }
 
-    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await res.json() as any;
 
     // Build the briefing message
     const lines: string[] = [];

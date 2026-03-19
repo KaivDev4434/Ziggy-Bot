@@ -17,7 +17,8 @@ export async function nightlySummaryJob(
       return;
     }
 
-    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await res.json() as any;
     if (data.summary) {
       console.log(`[nightlySummary] Summarized: "${data.summary.slice(0, 80)}..."`);
     } else {

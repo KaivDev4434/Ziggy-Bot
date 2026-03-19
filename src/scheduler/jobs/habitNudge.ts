@@ -22,7 +22,8 @@ export async function habitNudgeJob(
 
     if (!res.ok) return;
 
-    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await res.json() as any;
     const habits: HabitStatus[] = data.habits ?? [];
 
     const pending = habits.filter((h) => !h.completedToday);

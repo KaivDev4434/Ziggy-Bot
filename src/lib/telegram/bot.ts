@@ -80,9 +80,9 @@ export async function deleteWebhook(botToken: string): Promise<void> {
 }
 
 /** Get info about the currently set webhook. */
-export async function getWebhookInfo(botToken: string): Promise<object> {
+export async function getWebhookInfo(botToken: string): Promise<Record<string, unknown>> {
   const res = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
-  return res.json();
+  return res.json() as Promise<Record<string, unknown>>;
 }
 
 /** Load Telegram config from process.env (populated by configLoader). */

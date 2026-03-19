@@ -21,7 +21,8 @@ export async function weeklyReviewJob(
       return;
     }
 
-    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await res.json() as any;
     const report: string = data.report ?? "No weekly review available.";
 
     await sendHtml({ botToken, chatId }, `📊 <b>Weekly Review</b>\n\n${report}`);

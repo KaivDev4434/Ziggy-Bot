@@ -7,13 +7,12 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 # Copy source
-COPY tsconfig.json ./
+COPY tsconfig.worker.json ./
 COPY src/scheduler ./src/scheduler
 COPY src/lib/telegram ./src/lib/telegram
 
-# Compile TypeScript
-RUN npx tsc --project tsconfig.json --outDir dist --module commonjs --moduleResolution node \
-    --noEmit false || true
+# Compile TypeScript using the worker-specific tsconfig
+RUN npx tsc --project tsconfig.worker.json
 
 # Run compiled worker
-CMD ["node", "dist/src/scheduler/index.js"]
+CMD ["node", "dist/scheduler/index.js"]

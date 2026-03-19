@@ -23,7 +23,8 @@ export async function deadlineAlertJob(
 
     if (!res.ok) return;
 
-    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await res.json() as any;
     const todos: Todo[] = data.todos ?? [];
 
     const now = new Date();
